@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Allow HTTP for specific domains if needed -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">hrm.indigierp.com</domain>
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain> <!-- Emulator -->
+    </domain-config>
+</network-security-config>
