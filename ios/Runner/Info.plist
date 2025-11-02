@@ -45,5 +45,31 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Flutter Specific Keys -->
+	<key>FLutterRoot</key>
+	<string>$(FLUTTER_ROOT)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
+	
+	<!-- Privacy Descriptions (Add based on your app's permissions) -->
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access for attendance tracking</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access for attendance features</string>
+	
+	<!-- Required for iOS 14+ -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs local network access for connectivity</string>
+	
+	<!-- Minimum iOS version support -->
+	<key>MinimumOSVersion</key>
+	<string>13.0</string>
 </dict>
 </plist>

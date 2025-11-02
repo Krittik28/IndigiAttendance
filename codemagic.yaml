@@ -1,0 +1,41 @@
+# Codemagic build configuration for iOS
+workflows:
+  ios-development:
+    name: iOS Development Build
+    environment:
+      vars:
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        BUNDLE_ID: "com.indigi.indigiAttendanceApp"
+      xcode: latest
+      cocoapods: default
+      flutter: stable
+    scripts:
+      - name: Update Bundle Identifier
+        script: |
+          echo "Updating bundle identifier to com.indigi.indigiAttendanceApp"
+          cd ios
+          sed -i.bak 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = com.indigi.indigiAttendanceApp;/g' Runner.xcodeproj/project.pbxproj
+          echo "Bundle identifier updated successfully"
+
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+
+      - name: Install iOS dependencies
+        script: |
+          cd ios
+          pod install
+
+      - name: Build iOS without signing
+        script: |
+          flutter build ios --no-codesign --debug
+
+    artifacts:
+      - build/ios/**/*.app
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      email:
+        recipients:
+          - krittik@indigi.co.in # Replace with your actual email
