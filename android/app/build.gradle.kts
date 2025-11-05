@@ -32,10 +32,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("keystore.jks")
-            storePassword = "admin123"
+            storeFile = file("indigi_attendance.jks")
+            storePassword = "p4rb3z"
             keyAlias = "key0"
-            keyPassword = "admin123"
+            keyPassword = "p4rb3z"
         }
     }
 
