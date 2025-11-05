@@ -5,7 +5,8 @@ buildscript {
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:7.3.0")
+        // Update AGP to latest version compatible with SDK 36
+        classpath("com.android.tools.build:gradle:8.1.2")
         // Remove the explicit Kotlin version - Flutter will provide its own
     }
 }
