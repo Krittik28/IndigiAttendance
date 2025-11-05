@@ -7,16 +7,16 @@ plugins {
 
 android {
     namespace = "com.indigi.indigi_attendance_app"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
+    // ndkVersion = "25.1.8937393" // Use latest NDK version
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -25,7 +25,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -44,14 +44,32 @@ android {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             isShrinkResources = false
-            // isDebuggable = true
-            // isJniDebuggable = true
-            // isRenderscriptDebuggable = true
-            // proguardFiles(
-            //     getDefaultProguardFile("proguard-android-optimize.txt"),
-            //     "proguard-rules.pro"
-            // )
         }
+        getByName("debug") {
+            // Add debug configuration if needed
+        }
+    }
+
+    // Add this for Android 14+ compatibility
+    packagingOptions {
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/ASL2.0",
+                "META-INF/*.kotlin_module"
+            )
+        }
+    }
+
+    // Add for better build performance
+    buildFeatures {
+        buildConfig = true
     }
 }
 
@@ -60,9 +78,11 @@ flutter {
 }
 
 dependencies {
-    // implementation("com.google.android.play:core:1.10.3")
-    // implementation("com.google.android.play:core-ktx:1.8.1")
+    // Latest Play Core libraries compatible with SDK 36
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
-
+    
+    // Optional: If using in-app reviews
+    // implementation("com.google.android.play:review:2.0.1")
+    // implementation("com.google.android.play:review-ktx:2.0.1")
 }
