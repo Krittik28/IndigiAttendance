@@ -5,6 +5,7 @@ import 'views/login_screen.dart';
 import 'views/dashboard_screen.dart';
 import 'controllers/attendance_controller.dart';
 
+//hello its me 
 void main() {
   runApp(const MyApp());
 }
