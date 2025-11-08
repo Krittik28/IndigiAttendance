@@ -39,16 +39,40 @@ class Attendance {
   }
 }
 
+class AttendanceSummary {
+  final int totalDays;
+  final int onTimeDays;
+  final int lateDays;
+  final double averageHours;
+  final int presentThisMonth;
+
+  AttendanceSummary({
+    required this.totalDays,
+    required this.onTimeDays,
+    required this.lateDays,
+    required this.averageHours,
+    required this.presentThisMonth,
+  });
+}
+
+class AttendanceFilters {
+  final String timePeriod;
+  final bool showOnlyCompleted;
+  final String? specificMonth;
+
+  AttendanceFilters({
+    required this.timePeriod,
+    required this.showOnlyCompleted,
+    this.specificMonth,
+  });
+}
+
 class CheckInResponse {
   final bool status;
   final String message;
   final Attendance? data;
 
-  CheckInResponse({
-    required this.status,
-    required this.message,
-    this.data,
-  });
+  CheckInResponse({required this.status, required this.message, this.data});
 
   factory CheckInResponse.fromJson(Map<String, dynamic> json) {
     return CheckInResponse(
@@ -64,11 +88,7 @@ class CheckOutResponse {
   final String message;
   final Attendance? data;
 
-  CheckOutResponse({
-    required this.status,
-    required this.message,
-    this.data,
-  });
+  CheckOutResponse({required this.status, required this.message, this.data});
 
   factory CheckOutResponse.fromJson(Map<String, dynamic> json) {
     return CheckOutResponse(
@@ -84,16 +104,13 @@ class AttendanceHistoryResponse {
   final bool status;
   final List<Attendance> data;
 
-  AttendanceHistoryResponse({
-    required this.status,
-    required this.data,
-  });
+  AttendanceHistoryResponse({required this.status, required this.data});
 
   factory AttendanceHistoryResponse.fromJson(Map<String, dynamic> json) {
     return AttendanceHistoryResponse(
       status: json['status'],
       data: List<Attendance>.from(
-        json['data'].map((x) => Attendance.fromJson(x))
+        json['data'].map((x) => Attendance.fromJson(x)),
       ),
     );
   }

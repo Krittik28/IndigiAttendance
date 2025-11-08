@@ -46,7 +46,7 @@ class AppLoader extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
+              SizedBox(
                 height: 100,
                 width: 100,
                 child: Image.asset(
