@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 60),
                 
                 // Company Logo
-                Container(
+                SizedBox(
                   height: 180,
                   width: 180,
                   child: Image.asset(

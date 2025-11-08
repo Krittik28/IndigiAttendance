@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/attendance_controller.dart';
-import '../widgets/attendance_history_widget.dart';
+import '../widgets/enhanced_attendance_history.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -18,7 +18,7 @@ class DashboardScreen extends StatelessWidget {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+            SizedBox(
               height: 32,
               width: 32,
               child: Image.asset(
@@ -124,7 +124,9 @@ class DashboardScreen extends StatelessWidget {
 
               // Today's Activity Status Card
               FutureBuilder<Map<String, dynamic>>(
-                future: attendanceController.getTodayStatus(authController.currentUser!.employeeCode),
+                future: attendanceController.getTodayStatus(
+                  authController.currentUser!.employeeCode,
+                ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Container(
@@ -153,8 +155,9 @@ class DashboardScreen extends StatelessWidget {
                     final checkinCount = status['checkinCount'] ?? 0;
                     final checkoutCount = status['checkoutCount'] ?? 0;
                     final todayEntries = status['todayEntries'] ?? [];
-                    
-                    String statusText = 'Check-ins: $checkinCount • Check-outs: $checkoutCount';
+
+                    String statusText =
+                        'Check-ins: $checkinCount • Check-outs: $checkoutCount';
                     Color statusColor = Colors.blue;
                     IconData statusIcon = Icons.history;
 
@@ -229,7 +232,10 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           if (todayEntries.isNotEmpty)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: statusColor.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
@@ -256,7 +262,9 @@ class DashboardScreen extends StatelessWidget {
 
               // Current Processing Data
               if (attendanceController.currentProcessingData != null)
-                _buildProcessingCard(attendanceController.currentProcessingData!),
+                _buildProcessingCard(
+                  attendanceController.currentProcessingData!,
+                ),
 
               // Error Message Display
               if (attendanceController.errorMessage.isNotEmpty)
@@ -267,7 +275,9 @@ class DashboardScreen extends StatelessWidget {
                     color: _getErrorColor(attendanceController.errorMessage),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: _getErrorBorderColor(attendanceController.errorMessage),
+                      color: _getErrorBorderColor(
+                        attendanceController.errorMessage,
+                      ),
                       width: 1,
                     ),
                   ),
@@ -275,7 +285,9 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Icon(
                         _getErrorIcon(attendanceController.errorMessage),
-                        color: _getErrorIconColor(attendanceController.errorMessage),
+                        color: _getErrorIconColor(
+                          attendanceController.errorMessage,
+                        ),
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -283,7 +295,9 @@ class DashboardScreen extends StatelessWidget {
                         child: Text(
                           attendanceController.errorMessage,
                           style: TextStyle(
-                            color: _getErrorTextColor(attendanceController.errorMessage),
+                            color: _getErrorTextColor(
+                              attendanceController.errorMessage,
+                            ),
                             fontSize: 14,
                           ),
                         ),
@@ -327,9 +341,7 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     const Text(
                       'Record your check-in and check-out anytime',
-                      style: TextStyle(
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -341,12 +353,18 @@ class DashboardScreen extends StatelessWidget {
                             color: Colors.green,
                             isLoading: attendanceController.isLoading,
                             onPressed: () async {
-                              final success = await attendanceController.checkIn(
-                                employeeCode: authController.currentUser!.employeeCode,
-                              );
+                              final success = await attendanceController
+                                  .checkIn(
+                                    employeeCode: authController
+                                        .currentUser!
+                                        .employeeCode,
+                                  );
 
                               if (success && context.mounted) {
-                                _showSuccessDialog(context, 'Check-in Successful!');
+                                _showSuccessDialog(
+                                  context,
+                                  'Check-in Successful!',
+                                );
                                 // Refresh attendance history after successful check-in
                                 await authController.refreshAttendanceHistory();
                               }
@@ -361,12 +379,18 @@ class DashboardScreen extends StatelessWidget {
                             color: Colors.orange,
                             isLoading: attendanceController.isLoading,
                             onPressed: () async {
-                              final success = await attendanceController.checkOut(
-                                employeeCode: authController.currentUser!.employeeCode,
-                              );
+                              final success = await attendanceController
+                                  .checkOut(
+                                    employeeCode: authController
+                                        .currentUser!
+                                        .employeeCode,
+                                  );
 
                               if (success && context.mounted) {
-                                _showSuccessDialog(context, 'Check-out Successful!');
+                                _showSuccessDialog(
+                                  context,
+                                  'Check-out Successful!',
+                                );
                                 attendanceController.clearCurrentAttendance();
                                 // Refresh attendance history after successful check-out
                                 await authController.refreshAttendanceHistory();
@@ -376,7 +400,6 @@ class DashboardScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    
                   ],
                 ),
               ),
@@ -388,13 +411,40 @@ class DashboardScreen extends StatelessWidget {
               ),
 
               // Attendance History
-              AttendanceHistoryWidget(
-                attendanceList: authController.attendanceHistory,
-                onRefresh: () async {
-                  await authController.refreshAttendanceHistory();
-                },
-                isRefreshing: authController.isRefreshingHistory,
+              Container(
+                margin: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Attendance History',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 400, // Adjust height as needed
+                      child: EnhancedAttendanceHistory(
+                        attendanceList: authController.attendanceHistory,
+                        onRefresh: () async {
+                          await authController.refreshAttendanceHistory();
+                        },
+                        isRefreshing: authController.isRefreshingHistory,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              // AttendanceHistoryWidget(
+              //   attendanceList: authController.attendanceHistory,
+              //   onRefresh: () async {
+              //     await authController.refreshAttendanceHistory();
+              //   },
+              //   isRefreshing: authController.isRefreshingHistory,
+              // ),
             ],
           ),
         ),
@@ -413,11 +463,7 @@ class DashboardScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.access_time,
-            color: Colors.blue[700],
-            size: 24,
-          ),
+          Icon(Icons.access_time, color: Colors.blue[700], size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -442,10 +488,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 Text(
                   'Coordinates: ${processingData['coordinates']}',
-                  style: TextStyle(
-                    color: Colors.blue[600],
-                    fontSize: 11,
-                  ),
+                  style: TextStyle(color: Colors.blue[600], fontSize: 11),
                 ),
               ],
             ),
@@ -476,9 +519,7 @@ class DashboardScreen extends StatelessWidget {
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 2,
       ),
       child: isLoading
@@ -600,10 +641,7 @@ class DashboardScreen extends StatelessWidget {
               // Then logout - this will trigger the main.dart to show login screen
               await authController.logout();
             },
-            child: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
