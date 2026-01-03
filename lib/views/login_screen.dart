@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:upgrader/upgrader.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -31,15 +32,22 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final authController = Provider.of<AuthController>(context);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
+    return UpgradeAlert(
+      upgrader: Upgrader(
+        durationUntilAlertAgain: Duration.zero,
+      ),
+      showIgnore: false,
+      showLater: false,
+      shouldPopScope: () => false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
                 const SizedBox(height: 60),
                 
                 // Company Logo
@@ -226,6 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

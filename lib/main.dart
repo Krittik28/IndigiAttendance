@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:upgrader/upgrader.dart';
 import 'controllers/auth_controller.dart';
 import 'views/login_screen.dart';
 import 'views/dashboard_screen.dart';
@@ -24,7 +25,15 @@ class MyApp extends StatelessWidget {
           useMaterial3: false,
           fontFamily: 'Roboto',
         ),
-        home: const AppLoader(),
+        home: UpgradeAlert(
+          upgrader: Upgrader(
+            durationUntilAlertAgain: Duration.zero,
+          ),
+          showIgnore: false,
+          showLater: false,
+          shouldPopScope: () => false,
+          child: const AppLoader(),
+        ),
         debugShowCheckedModeBanner: false,
       ),
     );
