@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../services/api_service.dart';
 import '../services/shared_prefs_service.dart';
+import '../services/device_service.dart';
 import '../models/user_model.dart';
 import '../models/attendance_model.dart';
 
@@ -31,11 +32,21 @@ class AuthController with ChangeNotifier {
       
       if (userData != null) {
         // Try to auto-login with saved credentials
-        await login(
+        final success = await login(
           userData['employeeCode']!,
           userData['password']!,
           isAutoLogin: true,
         );
+        
+        if (!success) {
+          // If login fails, try to use saved user data as fallback
+          try {
+            final userMap = json.decode(userData['userData']!);
+            _currentUser = User.fromJson(userMap);
+          } catch (e) {
+            print('Error parsing saved user data: $e');
+          }
+        }
       }
     } catch (e) {
       print('Auto-login failed: $e');
@@ -66,7 +77,15 @@ class AuthController with ChangeNotifier {
     }
 
     try {
-      final response = await ApiService.login(empCode, password);
+      // Fetch Device ID and Model for security binding
+      final deviceDetails = await DeviceService.getDeviceDetails();
+      
+      final response = await ApiService.login(
+        empCode, 
+        password,
+        deviceId: deviceDetails['device_id'],
+        deviceModel: deviceDetails['device_model'],
+      );
       
       if (response.status && response.user != null) {
         _currentUser = response.user;
@@ -84,6 +103,7 @@ class AuthController with ChangeNotifier {
               'employee_code': response.user!.employeeCode,
               'name': response.user!.name,
               'email': response.user!.email,
+              'emp_attachment_url': response.user!.empAttachmentUrl,
             }),
           );
         }
