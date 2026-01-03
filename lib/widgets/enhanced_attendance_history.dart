@@ -1,17 +1,21 @@
 // enhanced_attendance_history.dart
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/attendance_model.dart';
+import 'map_view_dialog.dart';
 
 class EnhancedAttendanceHistory extends StatefulWidget {
   final List<Attendance> attendanceList;
   final Future<void> Function()? onRefresh;
   final bool isRefreshing;
+  final DateTime? initialFocusDate;
 
   const EnhancedAttendanceHistory({
     super.key,
     required this.attendanceList,
     this.onRefresh,
     this.isRefreshing = false,
+    this.initialFocusDate,
   });
 
   @override
@@ -19,23 +23,139 @@ class EnhancedAttendanceHistory extends StatefulWidget {
 }
 
 class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
-  String _selectedFilter = 'all'; // 'today', 'week', 'month', 'all'
+  String _selectedFilter = 'all'; // 'today', 'week', 'month', 'custom', 'all'
+  DateTimeRange? _selectedDateRange;
   bool _showOnlyCompleted = false;
-  Map<String, bool> _expandedMonths = {};
+  final Map<String, bool> _expandedMonths = {};
 
   @override
   void initState() {
     super.initState();
-    // Initialize all months as expanded
-    _initializeExpandedStates();
-  }
-
-  void _initializeExpandedStates() {
-    final grouped = _groupAttendanceByMonth(widget.attendanceList);
-    _expandedMonths = {};
-    for (var monthKey in grouped.keys) {
+    if (widget.initialFocusDate != null) {
+      _selectedFilter = 'custom';
+      final date = widget.initialFocusDate!;
+      
+      // Set range to the whole month of the focused date
+      final startOfMonth = DateTime(date.year, date.month, 1);
+      final endOfMonth = DateTime(date.year, date.month + 1, 0); // Last day of month
+      
+      _selectedDateRange = DateTimeRange(start: startOfMonth, end: endOfMonth);
+      
+      final monthKey = "${date.year}-${date.month.toString().padLeft(2, '0')}";
       _expandedMonths[monthKey] = true;
     }
+  }
+
+ Future<void> _selectDateRange() async {
+  final DateTimeRange? picked = await showDialog<DateTimeRange>(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black54,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.white,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: SizedBox(
+          width: 500,   // ✅ Fixed width
+          height: 600,  // ✅ Fixed height
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              colorScheme: const ColorScheme.light(
+                primary: Colors.blue,
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            child: DateRangePickerDialog(
+              helpText: 'Select Start and End Date',
+              saveText: 'APPLY',
+              cancelText: 'CANCEL',
+              initialEntryMode: DatePickerEntryMode.calendar,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+              initialDateRange: _selectedDateRange ??
+                  DateTimeRange(
+                    start: DateTime.now().subtract(const Duration(days: 7)),
+                    end: DateTime.now(),
+                  ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+
+  // ✅ Handle result
+  if (picked != null) {
+    setState(() {
+      _selectedDateRange = picked;
+      _selectedFilter = 'custom';
+    });
+  } else if (_selectedFilter == 'custom' && _selectedDateRange == null) {
+    setState(() {
+      _selectedFilter = 'all';
+    });
+  }
+}
+
+  Future<void> _openMapLocation(Attendance attendance) async {
+    LatLng? checkinLatLng;
+    LatLng? checkoutLatLng;
+
+    try {
+      if (attendance.checkinLatitude != null && attendance.checkinLongitude != null) {
+        checkinLatLng = LatLng(
+          double.parse(attendance.checkinLatitude!),
+          double.parse(attendance.checkinLongitude!),
+        );
+      }
+    } catch (e) {
+      // Invalid checkin coordinates
+    }
+
+    try {
+      if (attendance.checkoutLatitude != null && attendance.checkoutLongitude != null) {
+        checkoutLatLng = LatLng(
+          double.parse(attendance.checkoutLatitude!),
+          double.parse(attendance.checkoutLongitude!),
+        );
+      }
+    } catch (e) {
+      // Invalid checkout coordinates
+    }
+
+    if (checkinLatLng == null && checkoutLatLng == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No valid location data available')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => MapViewDialog(
+        checkinLocation: checkinLatLng,
+        checkoutLocation: checkoutLatLng,
+        title: (checkinLatLng != null && checkoutLatLng != null) 
+            ? 'Attendance Locations' 
+            : (checkinLatLng != null ? 'Check-in Location' : 'Check-out Location'),
+      ),
+    );
   }
 
   @override
@@ -62,6 +182,38 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           // Filter Row
           _buildFilterRow(),
           
+          if (_selectedFilter == 'custom' && _selectedDateRange != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[100]!),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.date_range, size: 16, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_formatDate(_selectedDateRange!.start)} - ${_formatDate(_selectedDateRange!.end)}',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: _selectDateRange,
+                    child: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           const SizedBox(height: 16),
           
           // Attendance List
@@ -69,6 +221,10 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _buildHeader() {
@@ -109,8 +265,6 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildStatItem('Total Days', summary.totalDays.toString(), Icons.calendar_today),
-            _buildStatItem('On Time', summary.onTimeDays.toString(), Icons.check_circle),
-            _buildStatItem('Present', summary.presentThisMonth.toString(), Icons.work),
             _buildStatItem('Avg Hours', summary.averageHours.toStringAsFixed(1), Icons.access_time),
           ],
         ),
@@ -162,9 +316,16 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                 DropdownMenuItem(value: 'today', child: Text('Today')),
                 DropdownMenuItem(value: 'week', child: Text('This Week')),
                 DropdownMenuItem(value: 'month', child: Text('This Month')),
+                DropdownMenuItem(value: 'custom', child: Text('Custom Range')),
                 DropdownMenuItem(value: 'all', child: Text('All Time')),
               ],
-              onChanged: (value) => setState(() => _selectedFilter = value!),
+              onChanged: (value) {
+                if (value == 'custom') {
+                  _selectDateRange();
+                } else {
+                  setState(() => _selectedFilter = value!);
+                }
+              },
             ),
           ),
         ),
@@ -189,16 +350,14 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
       return _buildEmptyState();
     }
 
-    return Expanded(
-      child: RefreshIndicator(
-        onRefresh: widget.onRefresh ?? () async {},
-        child: ListView(
-          children: [
-            for (var monthEntry in groupedAttendance.entries)
-              _buildMonthSection(monthEntry.key, monthEntry.value),
-          ],
-        ),
-      ),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: groupedAttendance.length,
+      itemBuilder: (context, index) {
+        final entry = groupedAttendance.entries.elementAt(index);
+        return _buildMonthSection(entry.key, entry.value);
+      },
     );
   }
 
@@ -235,7 +394,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                 const Divider(height: 1),
                 ...monthAttendance.map((attendance) => 
                   _buildAttendanceItem(attendance)
-                ).toList(),
+                ),
               ],
             ),
         ],
@@ -244,107 +403,128 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
   }
 
   Widget _buildAttendanceItem(Attendance attendance) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
-      ),
-      child: Row(
-        children: [
-          // Date Circle
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.blue[50],
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _getDayFromDate(attendance.checkinTime ?? ''),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-                Text(
-                  _getMonthAbbrFromDate(attendance.checkinTime ?? ''),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.blue,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(width: 12),
-          
-          // Attendance Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _getDayName(attendance.checkinTime ?? ''),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.login, size: 12, color: Colors.green),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatTime(attendance.checkinTime ?? ''),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    if (attendance.checkoutTime != null) ...[
-                      const SizedBox(width: 12),
-                      Icon(Icons.logout, size: 12, color: Colors.orange),
-                      const SizedBox(width: 4),
-                      Text(
-                        _formatTime(attendance.checkoutTime!),
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ],
-                ),
-                if (attendance.checkinLocation != null) ...[
-                  const SizedBox(height: 2),
+    return InkWell(
+      onTap: () => _openMapLocation(attendance),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
+        ),
+        child: Row(
+          children: [
+            // Date Circle
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Text(
-                    attendance.checkinLocation!,
-                    style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    _getDayFromDate(attendance.checkinTime ?? ''),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  Text(
+                    _getMonthAbbrFromDate(attendance.checkinTime ?? ''),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.blue,
+                    ),
                   ),
                 ],
-              ],
-            ),
-          ),
-          
-          // Status Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: attendance.checkoutTime != null ? Colors.green[50] : Colors.orange[50],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              attendance.checkoutTime != null ? 'Completed' : 'Pending',
-              style: TextStyle(
-                color: attendance.checkoutTime != null ? Colors.green : Colors.orange,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-        ],
+            
+            const SizedBox(width: 12),
+            
+            // Attendance Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getDayName(attendance.checkinTime ?? ''),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.login, size: 12, color: Colors.green),
+                      const SizedBox(width: 4),
+                      Text(
+                        _formatTime(attendance.checkinTime ?? ''),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      if (attendance.checkoutTime != null) ...[
+                        const SizedBox(width: 12),
+                        Icon(Icons.logout, size: 12, color: Colors.orange),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(attendance.checkoutTime!),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (attendance.checkinLocation != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 10, color: Colors.grey),
+                        const SizedBox(width: 2),
+                        Expanded(
+                          child: Text(
+                            attendance.checkinLocation!,
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            
+            // Status Badge
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: attendance.checkoutTime != null ? Colors.green[50] : Colors.orange[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    attendance.checkoutTime != null ? 'Completed' : 'Pending',
+                    style: TextStyle(
+                      color: attendance.checkoutTime != null ? Colors.green : Colors.orange,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (attendance.checkinLatitude != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Icon(Icons.map, size: 14, color: Colors.blue[300]),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -436,6 +616,20 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           }
         }).toList();
         break;
+      case 'custom':
+        if (_selectedDateRange != null) {
+          filtered = filtered.where((attendance) {
+            try {
+              final date = DateTime.parse(attendance.checkinTime!);
+              // Include the end date fully by adding one day to end or comparing carefully
+              return date.isAfter(_selectedDateRange!.start.subtract(const Duration(seconds: 1))) && 
+                     date.isBefore(_selectedDateRange!.end.add(const Duration(days: 1)));
+            } catch (e) {
+              return false;
+            }
+          }).toList();
+        }
+        break;
       // 'all' - no filtering needed
     }
     
@@ -449,21 +643,39 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
 
   AttendanceSummary _calculateSummary(List<Attendance> attendanceList) {
     final now = DateTime.now();
-    final currentMonthAttendance = attendanceList.where((attendance) {
-      try {
-        final date = DateTime.parse(attendance.checkinTime!);
-        return date.year == now.year && date.month == now.month;
-      } catch (e) {
-        return false;
-      }
-    }).length;
+    
+    int currentMonthAttendance = 0;
+    double totalHours = 0;
+    int completedRecords = 0;
 
-    // Simple calculation - you can enhance this with actual business logic
+    for (var attendance in attendanceList) {
+      try {
+        final checkin = DateTime.parse(attendance.checkinTime!);
+        
+        // Count for current month
+        if (checkin.year == now.year && checkin.month == now.month) {
+          currentMonthAttendance++;
+        }
+
+        // Calculate hours if both checkin and checkout exist
+        if (attendance.checkoutTime != null) {
+          final checkout = DateTime.parse(attendance.checkoutTime!);
+          final difference = checkout.difference(checkin);
+          totalHours += difference.inMinutes / 60.0;
+          completedRecords++;
+        }
+      } catch (e) {
+        // Skip invalid records
+      }
+    }
+
+    double averageHours = completedRecords > 0 ? totalHours / completedRecords : 0.0;
+
     return AttendanceSummary(
       totalDays: attendanceList.length,
-      onTimeDays: attendanceList.length - 2, // Example calculation
-      lateDays: 2, // Example calculation
-      averageHours: 8.5, // Example calculation
+      onTimeDays: 0, // Not relevant for now
+      lateDays: 0, // Not relevant for now
+      averageHours: averageHours,
       presentThisMonth: currentMonthAttendance,
     );
   }

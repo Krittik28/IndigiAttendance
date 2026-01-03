@@ -5,12 +5,14 @@ class User {
   final String employeeCode;
   final String name;
   final String email;
+  final String? empAttachmentUrl;
 
   User({
     required this.id,
     required this.employeeCode,
     required this.name,
     required this.email,
+    this.empAttachmentUrl,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -19,6 +21,7 @@ class User {
       employeeCode: json['employee_code']?.toString() ?? '', // Handle both int and string
       name: json['name'] ?? '',
       email: json['email'] ?? '',
+      empAttachmentUrl: json['emp_attachment_url'],
     );
   }
 }

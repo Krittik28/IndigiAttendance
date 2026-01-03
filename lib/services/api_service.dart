@@ -6,19 +6,28 @@ import '../models/attendance_model.dart';
 class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
 
-  static Future<LoginResponse> login(String empCode, String password) async {
+  static Future<LoginResponse> login(String empCode, String password, {String? deviceId, String? deviceModel}) async {
     final url = Uri.parse('$baseUrl/empLogin');
     
+    final body = {
+      'emp_code': empCode,
+      'password': password,
+    };
+
+    if (deviceId != null) {
+      body['device_id'] = deviceId;
+    }
+    if (deviceModel != null) {
+      body['device_model'] = deviceModel;
+    }
+
     final response = await http.post(
       url,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: {
-        'emp_code': empCode,
-        'password': password,
-      },
+      body: body,
     );
 
     print('Login Response Status: ${response.statusCode}');
