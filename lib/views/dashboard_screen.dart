@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:upgrader/upgrader.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/attendance_controller.dart';
 import '../views/history_screen.dart';
@@ -21,7 +22,14 @@ class DashboardScreen extends StatelessWidget {
     final todayHoliday = _getTodayHoliday();
     final upcomingHolidays = _getUpcomingHolidays();
 
-    return Scaffold(
+    return UpgradeAlert(
+      upgrader: Upgrader(
+        durationUntilAlertAgain: Duration.zero,
+      ),
+      showIgnore: false,
+      showLater: false,
+      shouldPopScope: () => false,
+      child: Scaffold(
       backgroundColor: const Color(0xFFF5F7FA), // Modern light grey background
       bottomNavigationBar: _buildBottomBar(context, attendanceController, authController, user),
       body: RefreshIndicator(
@@ -223,6 +231,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -1264,8 +1273,31 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
       }
     }).toList();
 
-    int completed = currentMonth.where((a) => a.checkoutTime != null).length;
-    int pending = currentMonth.where((a) => a.checkoutTime == null).length;
+    // Group by day to handle multiple check-ins
+    Map<String, List<Attendance>> sessionsByDay = {};
+    for (var attendance in currentMonth) {
+      try {
+        final d = DateTime.parse(attendance.checkinTime!);
+        final dateKey = '${d.year}-${d.month}-${d.day}';
+        sessionsByDay.putIfAbsent(dateKey, () => []).add(attendance);
+      } catch (e) {
+        continue;
+      }
+    }
+
+    int completed = 0;
+    int pending = 0;
+
+    sessionsByDay.forEach((key, sessions) {
+      // If ANY session is active (no checkout), the day is Pending/Active
+      bool hasActive = sessions.any((s) => s.checkoutTime == null);
+      if (hasActive) {
+        pending++;
+      } else {
+        completed++;
+      }
+    });
+
     int attendedCount = completed + pending;
     
     // Calculate total working days in month (excluding Sundays and Holidays)
