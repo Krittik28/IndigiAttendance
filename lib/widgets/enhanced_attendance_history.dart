@@ -1,6 +1,6 @@
 // enhanced_attendance_history.dart
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/attendance_model.dart';
 import 'map_view_dialog.dart';
 
@@ -172,7 +172,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           // Header with Refresh
           _buildHeader(),
           
-          const SizedBox(height: 16),
+          // const SizedBox(height: 16),
           
           // Statistics Card
           _buildStatisticsCard(summary),
@@ -232,7 +232,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         const Text(
-          'Attendance History',
+          'Statistics',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -257,14 +257,14 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
 
   Widget _buildStatisticsCard(AttendanceSummary summary) {
     return Card(
-      elevation: 2,
+      elevation: 0.2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildStatItem('Total Days', summary.totalDays.toString(), Icons.calendar_today),
+            const SizedBox(width: 12),
             _buildStatItem('Avg Hours', summary.averageHours.toStringAsFixed(1), Icons.access_time),
           ],
         ),
@@ -273,27 +273,44 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
   }
 
   Widget _buildStatItem(String title, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, size: 20, color: Colors.blue),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.blue[50]!.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(10),
         ),
-        const SizedBox(height: 2),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Colors.grey,
-          ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: Colors.blue),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -302,7 +319,8 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
       children: [
         // Time Period Filter
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Colors.grey[100],
             borderRadius: BorderRadius.circular(20),
@@ -310,8 +328,13 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: _selectedFilter,
-              icon: const Icon(Icons.arrow_drop_down, size: 16),
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
+              isDense: true,
+              icon: const Icon(Icons.arrow_drop_down, size: 20),
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
               items: const [
                 DropdownMenuItem(value: 'today', child: Text('Today')),
                 DropdownMenuItem(value: 'week', child: Text('This Week')),
@@ -333,13 +356,26 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
         const SizedBox(width: 8),
         
         // Completed Only Filter
-        FilterChip(
-          label: const Text('Completed Only'),
-          selected: _showOnlyCompleted,
-          onSelected: (value) => setState(() => _showOnlyCompleted = value),
-          backgroundColor: Colors.grey[100],
-          selectedColor: Colors.blue[100],
-          checkmarkColor: Colors.blue,
+        SizedBox(
+          height: 40,
+          child: FilterChip(
+            label: const Text('Completed Only'),
+            labelStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+            selected: _showOnlyCompleted,
+            onSelected: (value) => setState(() => _showOnlyCompleted = value),
+            backgroundColor: Colors.grey[100],
+            selectedColor: Colors.blue[100],
+            checkmarkColor: Colors.blue,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: Colors.transparent),
+            ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
         ),
       ],
     );
@@ -366,7 +402,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      elevation: 0.2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
@@ -411,6 +447,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           border: Border(bottom: BorderSide(color: Colors.grey[100]!)),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Date Circle
             Container(
@@ -500,6 +537,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
             // Status Badge
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -518,8 +556,8 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                 ),
                 if (attendance.checkinLatitude != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Icon(Icons.map, size: 14, color: Colors.blue[300]),
+                    padding: const EdgeInsets.only(top: 10.0),
+                    child: Icon(Icons.map, size: 20, color: Colors.blue[300]),
                   ),
               ],
             ),
@@ -644,17 +682,26 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
   AttendanceSummary _calculateSummary(List<Attendance> attendanceList) {
     final now = DateTime.now();
     
-    int currentMonthAttendance = 0;
+    // Track unique days
+    final Set<String> uniqueDays = {};
+    final Set<String> uniqueDaysWithCompletion = {};
+    final Set<String> uniqueDaysThisMonth = {};
+    
     double totalHours = 0;
-    int completedRecords = 0;
 
     for (var attendance in attendanceList) {
       try {
+        if (attendance.checkinTime == null) continue;
+
         final checkin = DateTime.parse(attendance.checkinTime!);
+        final dateKey = "${checkin.year}-${checkin.month}-${checkin.day}";
         
-        // Count for current month
+        // Track unique days present
+        uniqueDays.add(dateKey);
+
+        // Count for current month (unique days)
         if (checkin.year == now.year && checkin.month == now.month) {
-          currentMonthAttendance++;
+          uniqueDaysThisMonth.add(dateKey);
         }
 
         // Calculate hours if both checkin and checkout exist
@@ -662,21 +709,26 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           final checkout = DateTime.parse(attendance.checkoutTime!);
           final difference = checkout.difference(checkin);
           totalHours += difference.inMinutes / 60.0;
-          completedRecords++;
+          
+          // Mark this day as having a completed session for avg calc
+          uniqueDaysWithCompletion.add(dateKey);
         }
       } catch (e) {
         // Skip invalid records
       }
     }
 
-    double averageHours = completedRecords > 0 ? totalHours / completedRecords : 0.0;
+    // Calculate average based on days that actually have accumulated hours
+    double averageHours = uniqueDaysWithCompletion.isNotEmpty 
+        ? totalHours / uniqueDaysWithCompletion.length 
+        : 0.0;
 
     return AttendanceSummary(
-      totalDays: attendanceList.length,
+      totalDays: uniqueDays.length,
       onTimeDays: 0, // Not relevant for now
       lateDays: 0, // Not relevant for now
       averageHours: averageHours,
-      presentThisMonth: currentMonthAttendance,
+      presentThisMonth: uniqueDaysThisMonth.length,
     );
   }
 

@@ -11,8 +11,22 @@ import '../models/attendance_model.dart';
 import '../models/user_model.dart';
 import '../models/holiday_model.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch location when dashboard loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AttendanceController>(context, listen: false).fetchInitialLocation();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +49,8 @@ class DashboardScreen extends StatelessWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           await authController.refreshAttendanceHistory();
+          // Also refresh location on pull-to-refresh
+          await attendanceController.fetchInitialLocation();
         },
         color: Colors.indigo,
         child: CustomScrollView(
@@ -47,30 +63,55 @@ class DashboardScreen extends StatelessWidget {
               expandedHeight: 170.0,
               centerTitle: false,
               titleSpacing: 20,
-              title: Row(
-                children: [
-                  Image.asset(
-                    'assets/logo.png',
-                    height: 38,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(
-                        Icons.business_center_rounded,
-                        size: 26,
-                        color: Colors.indigo,
-                      );
-                    },
-                  ),
-                  // const SizedBox(width: 12),
-                  // const Text(
-                  //   'Indigi Attendance',
-                  //   style: TextStyle(
-                  //     fontWeight: FontWeight.w700,
-                  //     color: Colors.black87,
-                  //     fontSize: 20,
-                  //   ),
-                  // ),
-                ],
-              ),
+              title: attendanceController.cachedLocation != null
+                  ? InkWell(
+                      onTap: () => _showLocationDialog(context, attendanceController),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on, size: 16, color: Colors.indigo),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                attendanceController.cachedLocation!['shortLocation'] ?? 
+                                (attendanceController.cachedLocation!['location']!.length > 25 
+                                  ? '${attendanceController.cachedLocation!['location']!.substring(0, 25)}...' 
+                                  : attendanceController.cachedLocation!['location']!),
+                                style: const TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.indigo.withValues(alpha: 0.5)),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Fetching location...',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.calendar_month_outlined, color: Colors.black87),
@@ -85,7 +126,7 @@ class DashboardScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: IconButton(
-                    icon: Icon(Icons.logout_rounded, color: Colors.grey[700]),
+                    icon: Icon(Icons.logout_rounded, color: Colors.black87),
                     tooltip: 'Logout',
                     onPressed: () => _showLogoutDialog(context, authController),
                   ),
@@ -791,87 +832,100 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildUpcomingHolidaysCard(List<Holiday> holidays) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HolidayScreen()),
+          );
+        },
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: Colors.teal.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.teal.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.event, color: Colors.teal, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Upcoming Holidays',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal,
-                ),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.teal.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
+            border: Border.all(color: Colors.teal.withValues(alpha: 0.2)),
           ),
-          const SizedBox(height: 16),
-          ...holidays.map((h) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.event, color: Colors.teal, size: 20),
                   ),
-                  child: Text(
-                    '${_getMonthAbbrFromDate(h.date.toString())} ${h.date.day}',
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Upcoming Holidays',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey[700],
+                      color: Colors.teal,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    h.name,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.teal),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...holidays.map((h) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${_getMonthAbbrFromDate(h.date.toString())} ${h.date.day}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        h.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      _getDayName(h.date.toString()).substring(0, 3),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  _getDayName(h.date.toString()).substring(0, 3),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          )),
-        ],
+              )),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -905,14 +959,24 @@ class DashboardScreen extends StatelessWidget {
                 label: 'Check In',
                 color: const Color(0xFF4CAF50), // Material Green 500
                 isLoading: attendanceController.isLoading,
-                onPressed: () async {
-                  final success = await attendanceController.checkIn(
-                    employeeCode: user!.employeeCode,
+                onPressed: () {
+                  _showConfirmationDialog(
+                    context: context,
+                    title: 'Confirm Check-in',
+                    content: 'Are you sure you want to check in now?',
+                    icon: Icons.login_rounded,
+                    iconColor: const Color(0xFF4CAF50),
+                    controller: attendanceController,
+                    onConfirm: () async {
+                      final success = await attendanceController.checkIn(
+                        employeeCode: user!.employeeCode,
+                      );
+                      if (success && context.mounted) {
+                        _showSuccessDialog(context, 'Check-in Successful!');
+                        await authController.refreshAttendanceHistory();
+                      }
+                    },
                   );
-                  if (success && context.mounted) {
-                    _showSuccessDialog(context, 'Check-in Successful!');
-                    await authController.refreshAttendanceHistory();
-                  }
                 },
               ),
             ),
@@ -924,15 +988,25 @@ class DashboardScreen extends StatelessWidget {
                 label: 'Check Out',
                 color: const Color(0xFFFF9800), // Material Orange 500
                 isLoading: attendanceController.isLoading,
-                onPressed: () async {
-                  final success = await attendanceController.checkOut(
-                    employeeCode: user!.employeeCode,
+                onPressed: () {
+                  _showConfirmationDialog(
+                    context: context,
+                    title: 'Confirm Check-out',
+                    content: 'Are you sure you want to check out now?',
+                    icon: Icons.logout_rounded,
+                    iconColor: const Color(0xFFFF9800),
+                    controller: attendanceController,
+                    onConfirm: () async {
+                      final success = await attendanceController.checkOut(
+                        employeeCode: user!.employeeCode,
+                      );
+                      if (success && context.mounted) {
+                        _showSuccessDialog(context, 'Check-out Successful!');
+                        attendanceController.clearCurrentAttendance();
+                        await authController.refreshAttendanceHistory();
+                      }
+                    },
                   );
-                  if (success && context.mounted) {
-                    _showSuccessDialog(context, 'Check-out Successful!');
-                    attendanceController.clearCurrentAttendance();
-                    await authController.refreshAttendanceHistory();
-                  }
                 },
               ),
             ),
@@ -983,6 +1057,192 @@ class DashboardScreen extends StatelessWidget {
     } catch (e) {
       return 'Unknown';
     }
+  }
+
+  void _showConfirmationDialog({
+    required BuildContext context,
+    required String title,
+    required String content,
+    required IconData icon,
+    required Color iconColor,
+    required VoidCallback onConfirm,
+    required AttendanceController controller,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return FutureBuilder<Map<String, String>?>(
+          future: controller.fetchLocationSilent(),
+          builder: (context, snapshot) {
+            final isLoading = snapshot.connectionState == ConnectionState.waiting;
+            // Use snapshot data if available, otherwise fallback to cache, then unknown
+            final locationData = snapshot.data;
+            final location = locationData?['location'] ?? controller.cachedLocation?['location'] ?? 'Unknown Location';
+
+            return AlertDialog(
+              title: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: iconColor, size: 28),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    title,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    content,
+                    style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        if (isLoading) ...[
+                          const SizedBox(
+                            width: 16, 
+                            height: 16, 
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Fetching location...',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ] else ...[
+                          Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              location,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[800],
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              actionsAlignment: MainAxisAlignment.spaceBetween,
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading ? null : () {
+                    Navigator.pop(context);
+                    onConfirm();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: iconColor,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: iconColor.withValues(alpha: 0.5),
+                    disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  child: const Text('Confirm'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showLocationDialog(BuildContext context, AttendanceController controller) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.indigo.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_on, color: Colors.indigo, size: 28),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Current Location',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              controller.cachedLocation?['location'] ?? 'Unknown Location',
+              style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Coordinates: ${controller.cachedLocation?['latitude'] ?? '-'}, ${controller.cachedLocation?['longitude'] ?? '-'}',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              await controller.fetchInitialLocation();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Refresh'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showLogoutDialog(BuildContext context, AuthController authController) {

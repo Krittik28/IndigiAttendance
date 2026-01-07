@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class MapViewDialog extends StatelessWidget {
   final LatLng? checkinLocation;
@@ -16,24 +15,59 @@ class MapViewDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine center and zoom
+    // Determine camera position
     LatLng center;
     double zoom = 15.0;
+    bool isOverlapping = false;
 
     if (checkinLocation != null && checkoutLocation != null) {
-      // Center between points
+      // Check for overlap (approx within 11 meters)
+      if ((checkinLocation!.latitude - checkoutLocation!.latitude).abs() < 0.0001 &&
+          (checkinLocation!.longitude - checkoutLocation!.longitude).abs() < 0.0001) {
+        isOverlapping = true;
+      }
+
       center = LatLng(
         (checkinLocation!.latitude + checkoutLocation!.latitude) / 2,
         (checkinLocation!.longitude + checkoutLocation!.longitude) / 2,
       );
-      // Adjust zoom could be calculated, but 13 is a safe bet for city-level separation
-      zoom = 13.0;
+      zoom = isOverlapping ? 16.0 : 13.0;
     } else if (checkinLocation != null) {
       center = checkinLocation!;
     } else if (checkoutLocation != null) {
       center = checkoutLocation!;
     } else {
-      center = const LatLng(0, 0); // Fallback
+      center = const LatLng(0, 0);
+    }
+
+    final markers = <Marker>{};
+    if (checkinLocation != null) {
+      markers.add(
+        Marker(
+          markerId: const MarkerId('checkin'),
+          position: checkinLocation!,
+          infoWindow: const InfoWindow(title: 'Check-in Location'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        ),
+      );
+    }
+    if (checkoutLocation != null) {
+      LatLng displayPos = checkoutLocation!;
+      if (isOverlapping) {
+        // Offset slightly if overlapping so both are visible
+        displayPos = LatLng(
+          checkoutLocation!.latitude + 0.0001,
+          checkoutLocation!.longitude + 0.0001,
+        );
+      }
+      markers.add(
+        Marker(
+          markerId: const MarkerId('checkout'),
+          position: displayPos,
+          infoWindow: const InfoWindow(title: 'Check-out Location'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        ),
+      );
     }
 
     return Dialog(
@@ -91,51 +125,14 @@ class MapViewDialog extends StatelessWidget {
             width: double.infinity,
             child: ClipRRect(
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-              child: FlutterMap(
-                options: MapOptions(
-                  initialCenter: center,
-                  initialZoom: zoom,
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: center,
+                  zoom: zoom,
                 ),
-                children: [
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.indigi.attendance',
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      if (checkinLocation != null)
-                        Marker(
-                          point: checkinLocation!,
-                          width: 40,
-                          height: 40,
-                          child: const Icon(
-                            Icons.location_on,
-                            color: Colors.green,
-                            size: 40,
-                          ),
-                        ),
-                      if (checkoutLocation != null)
-                        Marker(
-                          point: checkoutLocation!,
-                          width: 40,
-                          height: 40,
-                          child: const Icon(
-                            Icons.location_on,
-                            color: Colors.orange,
-                            size: 40,
-                          ),
-                        ),
-                    ],
-                  ),
-                  RichAttributionWidget(
-                    attributions: [
-                      TextSourceAttribution(
-                        'OpenStreetMap contributors',
-                        onTap: () {},
-                      ),
-                    ],
-                  ),
-                ],
+                markers: markers,
+                myLocationButtonEnabled: false,
+                mapType: MapType.normal,
               ),
             ),
           ),
