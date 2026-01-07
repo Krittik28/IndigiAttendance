@@ -18,14 +18,13 @@ dependencies:
   shared_preferences: ^2.2.2
   fl_chart: ^1.1.1  
   url_launcher: ^6.3.2
-  flutter_map: ^8.2.2
-  latlong2: ^0.9.1
   flutter_secure_storage: ^9.0.0
   uuid: ^4.3.3
   device_info_plus: ^10.1.0
   cached_network_image: ^3.4.1
   upgrader: ^12.3.0
   package_info_plus: ^8.0.0
+  google_maps_flutter: ^2.14.0
 
 dev_dependencies:
   flutter_test:

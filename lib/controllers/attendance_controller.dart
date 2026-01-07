@@ -8,11 +8,45 @@ class AttendanceController with ChangeNotifier {
   String _errorMessage = '';
   Attendance? _currentAttendance;
   Map<String, dynamic>? _currentProcessingData;
+  Map<String, String>? _cachedLocation;
+  bool _isFetchingLocation = false;
 
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   Attendance? get currentAttendance => _currentAttendance;
   Map<String, dynamic>? get currentProcessingData => _currentProcessingData;
+  Map<String, String>? get cachedLocation => _cachedLocation;
+  bool get isFetchingLocation => _isFetchingLocation;
+
+  Future<Map<String, String>?> fetchLocationSilent() async {
+    try {
+      print('📍 Silently fetching location...');
+      final location = await LocationService.getCurrentLocation();
+      _cachedLocation = location;
+      // We don't notifyListeners here to avoid rebuilding during a build phase
+      // The dialog will handle the display of this specific fetch
+      return location;
+    } catch (e) {
+      print('⚠️ Failed to fetch silent location: $e');
+      return null;
+    }
+  }
+
+  Future<void> fetchInitialLocation() async {
+    _isFetchingLocation = true;
+    notifyListeners();
+    
+    try {
+      print('📍 Fetching initial location for dashboard...');
+      _cachedLocation = await LocationService.getCurrentLocation();
+      print('📍 Initial location fetched: ${_cachedLocation!['location']}');
+    } catch (e) {
+      print('⚠️ Failed to fetch initial location: $e');
+    } finally {
+      _isFetchingLocation = false;
+      notifyListeners();
+    }
+  }
 
   Future<bool> checkIn({required String employeeCode}) async {
     _isLoading = true;
@@ -21,7 +55,22 @@ class AttendanceController with ChangeNotifier {
     notifyListeners();
 
     try {
-      final locationData = await LocationService.getCurrentLocation();
+      Map<String, String> locationData;
+      try {
+        locationData = await LocationService.getCurrentLocation();
+        // Update cache with successful fetch
+        _cachedLocation = locationData;
+      } catch (e) {
+        print('⚠️ Live location fetch failed during check-in: $e');
+        if (_cachedLocation != null) {
+          print('ℹ️ Using cached location: ${_cachedLocation!['location']}');
+          locationData = _cachedLocation!;
+        } else {
+          // Try one last time to get *any* location or fail
+          print('⚠️ No cached location available. Retrying one last time...');
+          locationData = await LocationService.getCurrentLocation();
+        }
+      }
       
       // Set current processing data
       _currentProcessingData = {
@@ -81,7 +130,22 @@ class AttendanceController with ChangeNotifier {
     notifyListeners();
 
     try {
-      final locationData = await LocationService.getCurrentLocation();
+      Map<String, String> locationData;
+      try {
+        locationData = await LocationService.getCurrentLocation();
+        // Update cache with successful fetch
+        _cachedLocation = locationData;
+      } catch (e) {
+        print('⚠️ Live location fetch failed during check-out: $e');
+        if (_cachedLocation != null) {
+          print('ℹ️ Using cached location: ${_cachedLocation!['location']}');
+          locationData = _cachedLocation!;
+        } else {
+           // Try one last time to get *any* location or fail
+          print('⚠️ No cached location available. Retrying one last time...');
+          locationData = await LocationService.getCurrentLocation();
+        }
+      }
       
       // Set current processing data
       _currentProcessingData = {
