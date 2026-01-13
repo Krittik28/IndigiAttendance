@@ -13,6 +13,8 @@ class AuthController with ChangeNotifier {
   User? _currentUser;
   List<Attendance> _attendanceHistory = [];
   bool _isRefreshingHistory = false;
+  // Flag to distinguish between network errors (offline) and server rejections (invalid device/creds)
+  bool _lastLoginWasServerRejection = false;
 
   bool get isLoading => _isLoading;
   bool get isCheckingAutoLogin => _isCheckingAutoLogin;
@@ -39,12 +41,22 @@ class AuthController with ChangeNotifier {
         );
         
         if (!success) {
-          // If login fails, try to use saved user data as fallback
-          try {
-            final userMap = json.decode(userData['userData']!);
-            _currentUser = User.fromJson(userMap);
-          } catch (e) {
-            print('Error parsing saved user data: $e');
+          // SECURITY CHECK:
+          // If the server explicitly rejected the login (e.g. Device ID mismatch),
+          // we must NOT fall back to offline mode. We must clear the saved data.
+          if (_lastLoginWasServerRejection) {
+            print('⚠️ Auto-login rejected by server (likely device mismatch). Clearing saved state.');
+            await SharedPrefsService.clearUserData();
+            _currentUser = null;
+          } else {
+            // Only fall back to offline mode if it was NOT a server rejection (e.g. Network Error)
+            print('ℹ️ Auto-login failed due to network/unknown error. Using offline fallback.');
+            try {
+              final userMap = json.decode(userData['userData']!);
+              _currentUser = User.fromJson(userMap);
+            } catch (e) {
+              print('Error parsing saved user data: $e');
+            }
           }
         }
       }
@@ -77,6 +89,9 @@ class AuthController with ChangeNotifier {
     }
 
     try {
+      // Reset rejection flag at start of login attempt
+      _lastLoginWasServerRejection = false;
+
       // Fetch Device ID and Model for security binding
       final deviceDetails = await DeviceService.getDeviceDetails();
       
@@ -111,13 +126,24 @@ class AuthController with ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = 'Failed to login: Wrong username or password';
+        // Server responded but rejected the login (e.g. Device mismatch, Invalid password)
+        _lastLoginWasServerRejection = true;
+        
+        _errorMessage = response.message.isNotEmpty ? response.message : 'Login failed';
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      _errorMessage = 'Failed to login: Wrong username or password';
+      // Network error or other exception - NOT a server rejection
+      // _lastLoginWasServerRejection remains false
+      
+      // Extract the message from the exception, removing "Exception: " if present
+      String message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.substring(11);
+      }
+      _errorMessage = message;
       _isLoading = false;
       notifyListeners();
       return false;

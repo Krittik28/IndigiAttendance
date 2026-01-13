@@ -19,13 +19,32 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final ScrollController _scrollController = ScrollController();
+  double _scrollOffset = 0.0;
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      setState(() {
+        _scrollOffset = _scrollController.offset;
+      });
+    });
     // Fetch location when dashboard loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AttendanceController>(context, listen: false).fetchInitialLocation();
+      final auth = Provider.of<AuthController>(context, listen: false);
+      final att = Provider.of<AttendanceController>(context, listen: false);
+      att.fetchInitialLocation();
+      if (auth.currentUser != null) {
+        att.fetchTodayStatus(auth.currentUser!.employeeCode);
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -35,6 +54,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = authController.currentUser;
     final todayHoliday = _getTodayHoliday();
     final upcomingHolidays = _getUpcomingHolidays();
+
+    // Calculate opacity for the app bar profile image
+    // AppBar expanded height is 170. Toolbar height is approx 56.
+    // Transition range: Start fading in around 100, fully visible by 140.
+    final double profileOpacity = ((_scrollOffset - 100) / 40).clamp(0.0, 1.0);
 
     return UpgradeAlert(
       upgrader: Upgrader(
@@ -51,9 +75,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           await authController.refreshAttendanceHistory();
           // Also refresh location on pull-to-refresh
           await attendanceController.fetchInitialLocation();
+          if (user != null) {
+            await attendanceController.fetchTodayStatus(user.employeeCode);
+          }
         },
         color: Colors.indigo,
         child: CustomScrollView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverAppBar(
@@ -113,6 +141,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
               actions: [
+                 if (profileOpacity > 0)
+                  Opacity(
+                    opacity: profileOpacity,
+                    child: Center(
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(17),
+                          child: user?.empAttachmentUrl != null && user!.empAttachmentUrl!.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: user.empAttachmentUrl!,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (context, url, error) => const Icon(Icons.person, color: Colors.indigo, size: 18),
+                                  placeholder: (context, url) => Container(color: Colors.grey[100]),
+                                )
+                              : const Icon(Icons.person, color: Colors.indigo, size: 18),
+                        ),
+                      ),
+                    ),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.calendar_month_outlined, color: Colors.black87),
                   tooltip: 'Holiday List',
@@ -213,21 +275,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 24),
 
                     // Today's Status Card
-                    FutureBuilder<Map<String, dynamic>>(
-                      future: attendanceController.getTodayStatus(
-                        user?.employeeCode ?? '',
-                      ),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return _buildLoadingCard();
-                        }
-
-                        if (snapshot.hasData) {
-                          return _buildTodayStatusCard(snapshot.data!);
-                        }
-                        return const SizedBox();
-                      },
-                    ),
+                    if (attendanceController.todayStatus != null)
+                      _buildTodayStatusCard(attendanceController.todayStatus!)
+                    else
+                      _buildLoadingCard(),
 
                     // Live Status/Processing Indicators
                     if (attendanceController.currentProcessingData != null)
@@ -974,6 +1025,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       if (success && context.mounted) {
                         _showSuccessDialog(context, 'Check-in Successful!');
                         await authController.refreshAttendanceHistory();
+                        await attendanceController.fetchTodayStatus(user.employeeCode);
                       }
                     },
                   );
@@ -1004,6 +1056,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         _showSuccessDialog(context, 'Check-out Successful!');
                         attendanceController.clearCurrentAttendance();
                         await authController.refreshAttendanceHistory();
+                        await attendanceController.fetchTodayStatus(user.employeeCode);
                       }
                     },
                   );
@@ -1072,109 +1125,139 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return FutureBuilder<Map<String, String>?>(
-          future: controller.fetchLocationSilent(),
-          builder: (context, snapshot) {
-            final isLoading = snapshot.connectionState == ConnectionState.waiting;
-            // Use snapshot data if available, otherwise fallback to cache, then unknown
-            final locationData = snapshot.data;
-            final location = locationData?['location'] ?? controller.cachedLocation?['location'] ?? 'Unknown Location';
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return FutureBuilder<Map<String, String>?>(
+              future: controller.fetchLocationSilent(),
+              builder: (context, snapshot) {
+                final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                final locationData = snapshot.data;
+                // Use snapshot data if available, otherwise fallback to cache, then unknown
+                final location = locationData?['location'] ?? controller.cachedLocation?['location'] ?? 'Unknown Location';
+                final isLocationValid = location != 'Unknown Location';
 
-            return AlertDialog(
-              title: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: iconColor.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: iconColor, size: 28),
+                return AlertDialog(
+                  title: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: iconColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, color: iconColor, size: 28),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    content,
-                    style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: Row(
-                      children: [
-                        if (isLoading) ...[
-                          const SizedBox(
-                            width: 16, 
-                            height: 16, 
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        content,
+                        style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isLocationValid ? Colors.grey[100] : Colors.red.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isLocationValid ? Colors.grey[300]! : Colors.red.withValues(alpha: 0.2)
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Fetching location...',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ] else ...[
-                          Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              location,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[800],
-                                fontWeight: FontWeight.w500,
+                        ),
+                        child: Row(
+                          children: [
+                            if (isLoading) ...[
+                              const SizedBox(
+                                width: 16, 
+                                height: 16, 
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Fetching location...',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ] else ...[
+                              Icon(
+                                isLocationValid ? Icons.location_on : Icons.location_off, 
+                                size: 16, 
+                                color: isLocationValid ? Colors.grey[600] : Colors.red
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isLocationValid ? Colors.grey[800] : Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!isLocationValid)
+                                InkWell(
+                                  onTap: () {
+                                    // Trigger a rebuild to retry the FutureBuilder
+                                    setState(() {}); 
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(Icons.refresh, size: 16, color: Colors.indigo),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (!isLoading && !isLocationValid)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            'Location required. Tap icon to retry.',
+                            style: TextStyle(fontSize: 11, color: Colors.red.withValues(alpha: 0.8)),
                           ),
-                        ],
-                      ],
+                        ),
+                    ],
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  actionsAlignment: MainAxisAlignment.spaceBetween,
+                  actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
                     ),
-                  ),
-                ],
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              actionsAlignment: MainAxisAlignment.spaceBetween,
-              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-                ),
-                ElevatedButton(
-                  onPressed: isLoading ? null : () {
-                    Navigator.pop(context);
-                    onConfirm();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: iconColor,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: iconColor.withValues(alpha: 0.5),
-                    disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  child: const Text('Confirm'),
-                ),
-              ],
+                    ElevatedButton(
+                      onPressed: (isLoading || !isLocationValid) ? null : () {
+                        Navigator.pop(context);
+                        onConfirm();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: iconColor,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        disabledForegroundColor: Colors.grey[500],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      child: const Text('Confirm'),
+                    ),
+                  ],
+                );
+              },
             );
-          },
+          }
         );
       },
     );
