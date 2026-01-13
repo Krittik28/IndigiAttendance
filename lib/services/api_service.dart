@@ -15,10 +15,10 @@ class ApiService {
     };
 
     if (deviceId != null) {
-      body['device_id'] = deviceId;
+      body['registered_device_id'] = deviceId;
     }
     if (deviceModel != null) {
-      body['device_model'] = deviceModel;
+      body['registered_device_model'] = deviceModel;
     }
 
     final response = await http.post(
@@ -36,13 +36,27 @@ class ApiService {
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       return LoginResponse.fromJson(jsonResponse);
-    } else {
+    } else if (response.statusCode == 401 || response.statusCode == 403) {
+      // Handle known rejection codes (Unauthorized, Forbidden) gracefully
+      // This allows the UI/Controller to see the "Account is linked to another device" message
+      // without triggering the generic exception handler that forces offline mode.
       try {
-        final errorResponse = json.decode(response.body);
-        throw Exception(errorResponse['message'] ?? 'Login failed');
+        final jsonResponse = json.decode(response.body);
+        // Ensure status is false to trigger rejection logic
+        if (jsonResponse['status'] == null) jsonResponse['status'] = false;
+        return LoginResponse.fromJson(jsonResponse);
       } catch (e) {
         throw Exception('Login failed - Status: ${response.statusCode}');
       }
+    } else {
+      String errorMessage;
+      try {
+        final errorResponse = json.decode(response.body);
+        errorMessage = errorResponse['message'] ?? 'Login failed';
+      } catch (e) {
+        errorMessage = 'Login failed - Status: ${response.statusCode}';
+      }
+      throw Exception(errorMessage);
     }
   }
 

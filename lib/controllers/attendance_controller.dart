@@ -99,6 +99,10 @@ class AttendanceController with ChangeNotifier {
         _isLoading = false;
         _errorMessage = '';
         _currentProcessingData = null;
+        
+        // Refresh today's status to update the dashboard UI
+        await fetchTodayStatus(employeeCode);
+        
         notifyListeners();
         
         print('✅ Check-in successful!');
@@ -174,6 +178,10 @@ class AttendanceController with ChangeNotifier {
         _isLoading = false;
         _errorMessage = '';
         _currentProcessingData = null;
+        
+        // Refresh today's status to update the dashboard UI
+        await fetchTodayStatus(employeeCode);
+        
         notifyListeners();
         
         print('✅ Check-out successful!');
@@ -215,8 +223,12 @@ class AttendanceController with ChangeNotifier {
     }
   }
 
+  Map<String, dynamic>? _todayStatus;
+  
+  Map<String, dynamic>? get todayStatus => _todayStatus;
+  
   // Get today's attendance entries count
-  Future<Map<String, dynamic>> getTodayStatus(String employeeCode) async {
+  Future<void> fetchTodayStatus(String employeeCode) async {
     try {
       final history = await ApiService.getAttendanceHistory(employeeCode);
       final today = DateTime.now();
@@ -238,7 +250,7 @@ class AttendanceController with ChangeNotifier {
         }
       }
       
-      return {
+      _todayStatus = {
         'checkinCount': checkinCount,
         'checkoutCount': checkoutCount,
         'todayEntries': todayEntries,
@@ -249,15 +261,17 @@ class AttendanceController with ChangeNotifier {
             ? todayEntries.last.checkoutTime 
             : null,
       };
+      notifyListeners();
     } catch (e) {
       print('Error getting today status: $e');
-      return {
+      _todayStatus = {
         'checkinCount': 0,
         'checkoutCount': 0,
         'todayEntries': [],
         'lastCheckin': null,
         'lastCheckout': null,
       };
+      notifyListeners();
     }
   }
 
