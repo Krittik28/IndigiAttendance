@@ -2,7 +2,7 @@
 workflows:
   ios-development:
     name: iOS Development Build
-    instance_type: mac_mini_m1
+    instance_type: mac_mini
     environment:
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -36,9 +36,46 @@ workflows:
     artifacts:
       - build/ios/iphoneos/*.app
 
+  ios-simulator:
+    name: Build for simulator
+    instance_type: mac_mini
+    environment:
+      vars:
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+        BUNDLE_ID: "com.indigi.indigiAttendanceApp"
+      xcode: latest
+      cocoapods: default
+      flutter: stable
+    scripts:
+      - name: Update Bundle Identifier
+        script: |
+          echo "Updating bundle identifier to $BUNDLE_ID"
+          cd ios
+          sed -i.bak "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" Runner.xcodeproj/project.pbxproj
+
+      - name: Get Flutter packages
+        script: |
+          flutter clean
+          rm -f ios/Flutter/Generated.xcconfig
+          flutter pub get
+
+      - name: Install iOS dependencies
+        script: |
+          cd ios
+          pod install
+
+      - name: Build with Generic Destination
+        script: |
+          # Matches the intent of your snippet but works for Flutter
+          flutter build ios --debug --simulator
+
+    artifacts:
+      - build/ios/iphonesimulator/*.app
+
   ios-release-build-check:
     name: iOS Release Build (No Signing)
-    instance_type: mac_mini_m1
+    instance_type: mac_mini
     environment:
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -67,8 +104,6 @@ workflows:
 
       - name: Build iOS without signing (Release)
         script: |
-          # This builds the app in Release mode to ensure there are no compilation errors.
-          # It will not produce an .ipa file (which requires signing) but a .app bundle.
           flutter build ios --no-codesign --release
 
     artifacts:
