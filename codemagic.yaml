@@ -2,7 +2,7 @@
 workflows:
   ios-development:
     name: iOS Development Build
-    instance_type: mac_mini
+    instance_type: mac_mini_m1
     environment:
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -38,7 +38,7 @@ workflows:
 
   ios-simulator:
     name: Build for simulator
-    instance_type: mac_mini
+    instance_type: mac_mini_m1
     environment:
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
@@ -75,7 +75,7 @@ workflows:
 
   ios-release-build-check:
     name: iOS Release Build (No Signing)
-    instance_type: mac_mini
+    instance_type: mac_mini_m1
     environment:
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
