@@ -27,20 +27,17 @@ workflows:
           cd ios
           pod install
 
-      - name: Build iOS without signing
+      - name: Build iOS without signing (Debug)
         script: |
           flutter build ios --no-codesign --debug
 
     artifacts:
-      - build/ios/**/*.app
-      - build/ios/ipa/*.ipa
+      - build/ios/iphoneos/*.app
 
-  ios-release:
-    name: iOS Release & Upload to App Store
+  ios-release-build-check:
+    name: iOS Release Build (No Signing)
     instance_type: mac_mini_m1
     environment:
-      groups:
-        - app_store_credentials # Ensure you create this variable group in Codemagic UI if using env vars, or rely on Automatic Code Signing integration
       vars:
         XCODE_WORKSPACE: "Runner.xcworkspace"
         XCODE_SCHEME: "Runner"
@@ -55,13 +52,6 @@ workflows:
           cd ios
           sed -i.bak "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" Runner.xcodeproj/project.pbxproj
 
-      - name: Set up keychain and fetch signing files
-        script: |
-          keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-          xcode-project use-profiles
-
       - name: Get Flutter packages
         script: |
           flutter pub get
@@ -71,16 +61,12 @@ workflows:
           cd ios
           pod install
 
-      - name: Build IPA
+      - name: Build iOS without signing (Release)
         script: |
-          flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+          # This builds the app in Release mode to ensure there are no compilation errors.
+          # It will not produce an .ipa file (which requires signing) but a .app bundle.
+          flutter build ios --no-codesign --release
 
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/iphoneos/*.app
       - /tmp/xcodebuild_logs/*.log
-      - "*.dSYM.zip"
-
-    publishing:
-      app_store_connect:
-        auth: integration # Uses the API key configured in Codemagic UI (Distribution > iOS code signing)
-        submit_to_testflight: true
