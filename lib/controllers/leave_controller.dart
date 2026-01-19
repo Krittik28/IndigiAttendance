@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+import '../models/leave_model.dart';
+import '../services/leave_service.dart';
+
+class LeaveController extends ChangeNotifier {
+  final LeaveService _leaveService = LeaveService();
+
+  LeaveBalance? _balance;
+  List<LeaveRequest> _history = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  LeaveBalance? get balance => _balance;
+  List<LeaveRequest> get history => _history;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  // Fetch initial data
+  Future<void> fetchLeaveData(int userId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait([
+        _leaveService.getLeaveBalance(userId),
+        _leaveService.getLeaveHistory(),
+      ]);
+      _balance = results[0] as LeaveBalance;
+      _history = results[1] as List<LeaveRequest>;
+      
+      // Sort history by date desc
+      _history.sort((a, b) => b.startDate.compareTo(a.startDate));
+
+    } catch (e) {
+      _errorMessage = "Failed to load leave data: $e";
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Validate before applying
+  String? validateRequest(LeaveType type, DateTime start, DateTime end) {
+    if (_balance == null) return "Balance not loaded.";
+    return _leaveService.validateLeaveRequest(
+      type, 
+      start, 
+      end, 
+      _balance!.isProbation, 
+      _balance!.probationMonthsCompleted
+    );
+  }
+
+  // Apply for leave
+  Future<bool> submitLeaveRequest({
+    required LeaveType type,
+    required DateTime start,
+    required DateTime end,
+    required String reason,
+    String? attachmentPath,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final validationError = validateRequest(type, start, end);
+      if (validationError != null) {
+        _errorMessage = validationError;
+        return false;
+      }
+
+      final newRequest = LeaveRequest(
+        id: DateTime.now().millisecondsSinceEpoch.toString(), // Mock ID
+        type: type,
+        startDate: start,
+        endDate: end,
+        reason: reason,
+        status: LeaveStatus.pending,
+        appliedDate: DateTime.now(),
+        attachmentPath: attachmentPath,
+      );
+
+      final success = await _leaveService.applyForLeave(newRequest);
+      if (success) {
+        _history.insert(0, newRequest);
+        // In a real app, we'd also re-fetch balance or optimistically update it
+      }
+      return success;
+
+    } catch (e) {
+      _errorMessage = "Failed to submit request: $e";
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+}

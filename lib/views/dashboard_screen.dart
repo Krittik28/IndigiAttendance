@@ -7,6 +7,7 @@ import '../controllers/auth_controller.dart';
 import '../controllers/attendance_controller.dart';
 import '../views/history_screen.dart';
 import '../views/holiday_screen.dart';
+import '../views/leave/leave_dashboard_screen.dart';
 import '../models/attendance_model.dart';
 import '../models/user_model.dart';
 import '../models/holiday_model.dart';
@@ -175,6 +176,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                   ),
+                IconButton(
+                  icon: const Icon(Icons.assignment_turned_in_outlined, color: Colors.black87),
+                  tooltip: 'Leave Management',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LeaveDashboardScreen()),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.calendar_month_outlined, color: Colors.black87),
                   tooltip: 'Holiday List',

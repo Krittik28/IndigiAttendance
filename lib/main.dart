@@ -5,6 +5,7 @@ import 'controllers/auth_controller.dart';
 import 'views/login_screen.dart';
 import 'views/dashboard_screen.dart';
 import 'controllers/attendance_controller.dart';
+import 'controllers/leave_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,8 +16,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => AuthController(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => AuthController()),
+        ChangeNotifierProvider(create: (context) => AttendanceController()),
+        ChangeNotifierProvider(create: (context) => LeaveController()),
+      ],
       child: MaterialApp(
         title: 'Indigi Attendance',
         theme: ThemeData(
@@ -97,10 +102,7 @@ class AppLoader extends StatelessWidget {
 
     // Redirect to appropriate screen based on login status
     if (authController.currentUser != null) {
-      return ChangeNotifierProvider(
-        create: (context) => AttendanceController(),
-        child: const DashboardScreen(),
-      );
+      return const DashboardScreen();
     } else {
       return const LoginScreen();
     }
