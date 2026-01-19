@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/attendance_model.dart';
+import '../models/leave_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
@@ -170,6 +171,32 @@ class ApiService {
       }
     } else {
       throw Exception('Failed to fetch attendance history - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<LeaveBalance> getLeaveBalance(int userId) async {
+    final url = Uri.parse('$baseUrl/leave/current/$userId');
+    print('Fetching leave balance for user: $userId');
+    
+    final response = await http.get(
+      url,
+      headers: {
+        'Accept': 'application/json',
+      },
+    );
+
+    print('Leave Balance Response Status: ${response.statusCode}');
+    print('Leave Balance Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['success'] == true) {
+        return LeaveBalance.fromJson(jsonResponse['data']);
+      } else {
+        throw Exception(jsonResponse['message'] ?? 'Failed to fetch leave balance');
+      }
+    } else {
+      throw Exception('Failed to fetch leave balance - Status: ${response.statusCode}');
     }
   }
 }

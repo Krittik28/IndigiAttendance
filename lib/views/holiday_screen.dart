@@ -11,42 +11,46 @@ class HolidayScreen extends StatelessWidget {
     final sortedMonths = groupedHolidays.keys.toList()..sort();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Holiday List 2026',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: false,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Holidays',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              '2026',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
           for (var month in sortedMonths) ...[
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _MonthHeaderDelegate(
-                month: month,
-                hasToday: groupedHolidays[month]!.any(
-                  (h) => DateUtils.isSameDay(h.date, DateTime.now()),
-                ),
-              ),
+            _SliverMonthSection(
+              month: month,
+              holidays: groupedHolidays[month]!,
             ),
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final holidays = groupedHolidays[month]!;
-                  final holiday = holidays[index];
-                  final isLast = index == holidays.length - 1;
-                  return _buildHolidayItem(holiday, DateTime.now(), isLast);
-                },
-                childCount: groupedHolidays[month]!.length,
-              ),
-            ),
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
           ],
+          const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],
       ),
     );
@@ -65,183 +69,226 @@ class HolidayScreen extends StatelessWidget {
     }
     return grouped;
   }
+}
 
-  Widget _buildHolidayItem(Holiday holiday, DateTime now, bool isLast) {
-    final isPast = holiday.date.isBefore(DateTime(now.year, now.month, now.day));
-    final isToday = DateUtils.isSameDay(holiday.date, now);
+class _SliverMonthSection extends StatelessWidget {
+  final int month;
+  final List<Holiday> holidays;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: isLast ? BorderSide.none : BorderSide(color: Colors.grey.shade100),
-          left: BorderSide(color: Colors.grey.shade100),
-          right: BorderSide(color: Colors.grey.shade100),
-        ),
-        borderRadius: isLast
-            ? const BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              )
-            : null,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: isToday
-                  ? Colors.indigo
-                  : (isPast ? Colors.grey[100] : Colors.red[50]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+  const _SliverMonthSection({
+    required this.month,
+    required this.holidays,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final monthName = DateFormat('MMMM').format(DateTime(2026, month));
+    final hasToday = holidays.any((h) => DateUtils.isSameDay(h.date, DateTime.now()));
+
+    return SliverPadding(
+      padding: const EdgeInsets.only(bottom: 32),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          // Month Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Row(
               children: [
                 Text(
-                  holiday.date.day.toString(),
+                  monthName,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: isToday
-                        ? Colors.white
-                        : (isPast ? Colors.grey[400] : Colors.red),
+                    color: hasToday ? Colors.indigo : Colors.black87,
                   ),
                 ),
-                Text(
-                  DateFormat('EEE').format(holiday.date).toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: isToday
-                        ? Colors.white.withValues(alpha: 0.8)
-                        : (isPast ? Colors.grey[400] : Colors.red.withValues(alpha: 0.7)),
+                if (hasToday) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: const BoxDecoration(
+                      color: Colors.indigo,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  holiday.name,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: isPast ? Colors.grey[400] : Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  DateFormat('EEEE, d MMMM y').format(holiday.date),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isToday
-                        ? Colors.indigo
-                        : (isPast ? Colors.grey[400] : Colors.grey[600]),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isToday)
-            const Icon(Icons.celebration, color: Colors.indigo, size: 20),
-        ],
+          // Holiday Items
+          ...holidays.asMap().entries.map((entry) {
+            return _ModernHolidayItem(
+              holiday: entry.value,
+              index: entry.key,
+            );
+          }),
+        ]),
       ),
     );
   }
 }
 
-class _MonthHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final int month;
-  final bool hasToday;
+class _ModernHolidayItem extends StatefulWidget {
+  final Holiday holiday;
+  final int index;
 
-  _MonthHeaderDelegate({required this.month, required this.hasToday});
+  const _ModernHolidayItem({
+    required this.holiday,
+    required this.index,
+  });
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final monthName = DateFormat('MMMM').format(DateTime(2026, month));
-    
-    return Container(
-      height: maxExtent,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: hasToday ? Colors.indigo.withValues(alpha: 0.05) : Colors.grey[50],
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
-        ),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          if (overlapsContent || shrinkOffset > 0)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-        ],
-      ),
-      child: Container(
-         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-         decoration: BoxDecoration(
-            color: hasToday ? Colors.indigo.withValues(alpha: 0.05) : Colors.grey[50],
-             borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
-         ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.calendar_today_rounded,
-              size: 18,
-              color: hasToday ? Colors.indigo : Colors.grey[600],
-            ),
-            const SizedBox(width: 10),
-            Text(
-              monthName,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: hasToday ? Colors.indigo : Colors.black87,
-              ),
-            ),
-            const Spacer(),
-            if (hasToday)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.indigo,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Current',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-          ],
-        ),
-      ),
+  State<_ModernHolidayItem> createState() => _ModernHolidayItemState();
+}
+
+class _ModernHolidayItemState extends State<_ModernHolidayItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
     );
+
+    _scaleAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    // Staggered delay based on index
+    Future.delayed(Duration(milliseconds: widget.index * 100), () {
+      if (mounted) _controller.forward();
+    });
   }
 
   @override
-  double get maxExtent => 60.0;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
-  double get minExtent => 60.0;
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isPast = widget.holiday.date.isBefore(DateTime(now.year, now.month, now.day));
+    final isToday = DateUtils.isSameDay(widget.holiday.date, now);
 
-  @override
-  bool shouldRebuild(covariant _MonthHeaderDelegate oldDelegate) {
-    return oldDelegate.month != month || oldDelegate.hasToday != hasToday;
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Big Date Column
+              SizedBox(
+                width: 60,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.holiday.date.day.toString(),
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: isToday
+                            ? Colors.indigo
+                            : (isPast ? Colors.grey[300] : Colors.red),
+                      ),
+                    ),
+                    Text(
+                      DateFormat('EEE').format(widget.holiday.date).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isToday
+                            ? Colors.indigo.withValues(alpha: 0.7)
+                            : (isPast ? Colors.grey[300] : Colors.red.withValues(alpha: 0.5)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Event Card
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isToday ? Colors.indigo : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: isToday 
+                        ? null 
+                        : Border.all(color: Colors.grey.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isToday
+                            ? Colors.indigo.withValues(alpha: 0.3)
+                            : Colors.black.withValues(alpha: 0.02),
+                        blurRadius: isToday ? 12 : 4,
+                        offset: isToday ? const Offset(0, 6) : const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {},
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    widget.holiday.name,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isToday
+                                          ? Colors.white
+                                          : (isPast ? Colors.grey[400] : Colors.black87),
+                                    ),
+                                  ),
+                                ),
+                                if (isToday)
+                                  const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('EEEE, d MMMM').format(widget.holiday.date),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isToday
+                                    ? Colors.white.withValues(alpha: 0.8)
+                                    : Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
