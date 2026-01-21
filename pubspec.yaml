@@ -1,7 +1,7 @@
 name: indigi_attendance
 description: "Indigi Attendance is a mobile application for managing employee attendance."
 publish_to: 'none'
-version: 1.1.0+3
+version: 1.1.1+4
 
 environment:
   sdk: ^3.9.2
@@ -25,6 +25,8 @@ dependencies:
   upgrader: ^12.3.0
   package_info_plus: ^8.0.0
   google_maps_flutter: ^2.14.0
+  file_picker: ^10.3.8
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:

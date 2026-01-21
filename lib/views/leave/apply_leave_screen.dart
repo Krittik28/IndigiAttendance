@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../controllers/leave_controller.dart';
+import '../../controllers/auth_controller.dart';
 import '../../models/leave_model.dart';
 
 class ApplyLeaveScreen extends StatefulWidget {
@@ -17,6 +20,8 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   LeaveType? _selectedType;
   DateTimeRange? _selectedDateRange;
   final TextEditingController _reasonController = TextEditingController();
+  String? _attachmentPath;
+  String? _attachmentName;
   
   // Validation message from local checks
   String? _validationMessage;
@@ -25,6 +30,83 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   void dispose() {
     _reasonController.dispose();
     super.dispose();
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.indigo),
+                title: const Text('Take Photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.attach_file, color: Colors.indigo),
+                title: const Text('Choose File'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickFile();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(source: source);
+
+      if (image != null) {
+        setState(() {
+          _attachmentPath = image.path;
+          _attachmentName = image.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'pdf', 'png', 'jpeg'],
+      );
+
+      if (result != null) {
+        setState(() {
+          _attachmentPath = result.files.single.path;
+          _attachmentName = result.files.single.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking file: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -105,7 +187,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
                 const SizedBox(height: 24),
                 
                 if (_selectedType == LeaveType.sickLeave && (_selectedDateRange?.duration.inDays ?? 0) + 1 >= 3) ...[
-                   _buildSectionLabel('Prescription'),
+                   _buildSectionLabel('Prescription (Mandatory)'),
                    const SizedBox(height: 8),
                    _buildAttachmentUpload(),
                    const SizedBox(height: 8),
@@ -292,23 +374,49 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   }
 
   Widget _buildAttachmentUpload() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.cloud_upload_outlined, color: Colors.indigo),
-          const SizedBox(width: 12),
-          const Text(
-            'Upload Medical Certificate',
-            style: TextStyle(color: Colors.indigo, fontWeight: FontWeight.w500),
+    return GestureDetector(
+      onTap: _showAttachmentOptions,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _attachmentPath != null ? Colors.indigo : Colors.grey.shade300, 
+            style: BorderStyle.solid,
+            width: _attachmentPath != null ? 1.5 : 1,
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _attachmentPath != null ? Icons.check_circle : Icons.cloud_upload_outlined, 
+              color: _attachmentPath != null ? Colors.indigo : Colors.indigo,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _attachmentName ?? 'Upload Medical Certificate',
+                style: TextStyle(
+                  color: Colors.indigo, 
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (_attachmentPath != null)
+              IconButton(
+                icon: const Icon(Icons.close, size: 20, color: Colors.grey),
+                onPressed: () {
+                  setState(() {
+                    _attachmentPath = null;
+                    _attachmentName = null;
+                  });
+                },
+              )
+          ],
+        ),
       ),
     );
   }
@@ -362,14 +470,35 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
         return;
       }
 
+      // Special Check for Sick Leave > 3 days requiring Attachment
+      if (_selectedType == LeaveType.sickLeave && 
+          (_selectedDateRange!.duration.inDays + 1) >= 3 && 
+          _attachmentPath == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Please upload the medical certificate')),
+        );
+        return;
+      }
+
+      final authController = Provider.of<AuthController>(context, listen: false);
+      final empCode = authController.currentUser?.employeeCode;
+
+      if (empCode == null) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User session invalid. Please login again.')),
+        );
+        return;
+      }
+
       final controller = Provider.of<LeaveController>(context, listen: false);
       
       final success = await controller.submitLeaveRequest(
+        empCode: empCode,
         type: _selectedType!,
         start: _selectedDateRange!.start,
         end: _selectedDateRange!.end,
         reason: _reasonController.text,
-        attachmentPath: null, // Placeholder
+        attachmentPath: _attachmentPath,
       );
 
       if (success && mounted) {

@@ -8,6 +8,7 @@ import 'controllers/attendance_controller.dart';
 import 'controllers/leave_controller.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
