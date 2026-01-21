@@ -9,6 +9,7 @@ import 'controllers/leave_controller.dart';
 
 //hello its me 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 

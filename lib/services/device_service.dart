@@ -20,7 +20,26 @@ class DeviceService {
       deviceId = await _storage.read(key: _deviceIdKey);
       
       if (deviceId == null) {
-        deviceId = const Uuid().v4();
+        // Attempt to get a persistent native ID first
+        try {
+          if (!kIsWeb) {
+            if (Platform.isAndroid) {
+              final androidInfo = await _deviceInfo.androidInfo;
+              deviceId = androidInfo.id;
+            } else if (Platform.isIOS) {
+              final iosInfo = await _deviceInfo.iosInfo;
+              deviceId = iosInfo.identifierForVendor;
+            }
+          }
+        } catch (e) {
+          debugPrint('Error getting native device ID: $e');
+        }
+
+        // Fallback: If native ID failed, is empty, or we are on Web/Desktop, generate a UUID
+        if (deviceId == null || deviceId.isEmpty) {
+          deviceId = const Uuid().v4();
+        }
+        
         await _storage.write(key: _deviceIdKey, value: deviceId);
       }
 

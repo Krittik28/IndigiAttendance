@@ -5,6 +5,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/leave_controller.dart';
 import '../../models/leave_model.dart';
 import 'apply_leave_screen.dart';
+import 'leave_policy_screen.dart';
 
 class LeaveDashboardScreen extends StatefulWidget {
   const LeaveDashboardScreen({super.key});
@@ -41,6 +42,19 @@ class _LeaveDashboardScreenState extends State<LeaveDashboardScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.description_outlined, color: Colors.indigo),
+            tooltip: 'Leave Policy',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LeavePolicyScreen()),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {

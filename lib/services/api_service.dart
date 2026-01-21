@@ -8,7 +8,7 @@ class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
 
   static Future<LoginResponse> login(String empCode, String password, {String? deviceId, String? deviceModel}) async {
-    final url = Uri.parse('$baseUrl/empLogin');
+    final url = Uri.parse('$baseUrl/empLoginTest');
     
     final body = {
       'emp_code': empCode,
@@ -197,6 +197,59 @@ class ApiService {
       }
     } else {
       throw Exception('Failed to fetch leave balance - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> applyLeave({
+    required String empCode,
+    required String fromDate,
+    required String toDate,
+    required String reason,
+    required String type,
+    required double noOfDays,
+    String? prescriptionPath,
+  }) async {
+    final url = Uri.parse('$baseUrl/leave/apply');
+    print('Applying for leave: empCode=$empCode, type=$type, days=$noOfDays');
+
+    final request = http.MultipartRequest('POST', url);
+    
+    // Add text fields
+    request.fields['emp_code'] = empCode;
+    request.fields['from_date'] = fromDate;
+    request.fields['to_date'] = toDate;
+    request.fields['reason'] = reason;
+    request.fields['type'] = type;
+    request.fields['no_of_days'] = noOfDays.toString();
+
+    // Add file if present
+    if (prescriptionPath != null && prescriptionPath.isNotEmpty) {
+      print('Attaching prescription: $prescriptionPath');
+      request.files.add(await http.MultipartFile.fromPath(
+        'prescription', 
+        prescriptionPath
+      ));
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    print('Apply Leave Response Status: ${response.statusCode}');
+    print('Apply Leave Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['status'] == true) {
+        return true;
+      } else {
+        throw Exception(jsonResponse['message'] ?? 'Failed to apply for leave');
+      }
+    } else if (response.statusCode == 400 || response.statusCode == 422) {
+      // Validation errors
+      final jsonResponse = json.decode(response.body);
+      throw Exception(jsonResponse['message'] ?? 'Validation failed');
+    } else {
+      throw Exception('Failed to apply for leave - Status: ${response.statusCode}');
     }
   }
 }
