@@ -1,7 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
+import '../widgets/checkin_map_dialog.dart';
 import 'package:upgrader/upgrader.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/attendance_controller.dart';
@@ -1022,24 +1025,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: const Color(0xFF4CAF50), // Material Green 500
                 isLoading: attendanceController.isLoading,
                 onPressed: () {
-                  _showConfirmationDialog(
-                    context: context,
-                    title: 'Confirm Check-in',
-                    content: 'Are you sure you want to check in now?',
-                    icon: Icons.login_rounded,
-                    iconColor: const Color(0xFF4CAF50),
-                    controller: attendanceController,
-                    onConfirm: () async {
-                      final success = await attendanceController.checkIn(
-                        employeeCode: user!.employeeCode,
-                      );
-                      if (success && context.mounted) {
-                        _showSuccessDialog(context, 'Check-in Successful!');
-                        await authController.refreshAttendanceHistory();
-                        await attendanceController.fetchTodayStatus(user.employeeCode);
-                      }
-                    },
-                  );
+                  _showCheckInOptionsDialog(context, attendanceController, user, authController);
                 },
               ),
             ),
@@ -1411,9 +1397,223 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-}
+  void _showCheckInOptionsDialog(
+    BuildContext context,
+    AttendanceController attendanceController,
+    User? user,
+    AuthController authController,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Select Check-in Location',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.business, color: Colors.indigo),
+                ),
+                title: const Text('Indigi Office'),
+                subtitle: const Text('Check in from office premises (Geo-fencing enabled)'),
+                onTap: () async {
+                  Navigator.pop(sheetContext); // Close sheet
+                  _handleIndigiOfficeCheckIn(context, attendanceController, user, authController);
+                },
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.person_pin_circle, color: Colors.orange),
+                ),
+                title: const Text('Client Site'),
+                subtitle: const Text('Check in from client location'),
+                onTap: () {
+                  Navigator.pop(sheetContext); // Close sheet
+                  _handleClientSiteCheckIn(context, attendanceController, user, authController);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-// --- Chart Components ---
+  Future<void> _handleIndigiOfficeCheckIn(
+    BuildContext context,
+    AttendanceController attendanceController,
+    User? user,
+    AuthController authController,
+  ) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      print('🚀 Starting Indigi Office Check-in process...');
+      
+      // 1. Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled. Please enable GPS.');
+      }
+
+      // 2. Check permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permissions are denied.');
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception(
+            'Location permissions are permanently denied. Please enable them in settings.');
+      }
+
+      // 3. Fetch Fresh Location (Always fetch new for accuracy)
+      Position? position;
+      print('🔄 Fetching fresh location (High Accuracy)...');
+      
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } catch (e) {
+        print('⚠️ High accuracy fetch failed/timed out: $e');
+        
+        // Fallback to Balanced Accuracy (Better indoor/faster)
+        print('🔄 Retrying with Balanced Accuracy...');
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 7),
+        );
+      }
+
+      // Define office coordinates
+      const double officeLat = 26.132888;
+      const double officeLong = 91.829733;
+
+      // Calculate distance
+      double distanceInMeters = Geolocator.distanceBetween(
+        officeLat,
+        officeLong,
+        position.latitude,
+        position.longitude,
+      );
+      
+      print('📏 Distance to office: ${distanceInMeters.toStringAsFixed(2)}m');
+
+      // Close loading dialog
+      if (context.mounted) Navigator.pop(context);
+
+      // Show Map Dialog for confirmation (whether in range or not)
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => CheckInMapDialog(
+            userLocation: LatLng(position!.latitude, position.longitude),
+            officeLocation: const LatLng(officeLat, officeLong),
+            distance: distanceInMeters,
+            isWithinRange: distanceInMeters <= 20,
+            onConfirm: () async {
+              Navigator.pop(ctx); // Close Map Dialog
+              
+              // Proceed with Check-in
+              final success = await attendanceController.checkIn(
+                employeeCode: user!.employeeCode,
+              );
+              if (success && context.mounted) {
+                _showSuccessDialog(context, 'Check-in Successful!');
+                await authController.refreshAttendanceHistory();
+                await attendanceController.fetchTodayStatus(user.employeeCode);
+              }
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Location Process Error: $e');
+  }
+  
+  }
+
+  void _handleClientSiteCheckIn(
+    BuildContext context,
+    AttendanceController attendanceController,
+    User? user,
+    AuthController authController,
+  ) {
+    _showConfirmationDialog(
+      context: context,
+      title: 'Confirm Check-in',
+      content: 'Check in from Client Site?',
+      icon: Icons.person_pin_circle,
+      iconColor: const Color(0xFF4CAF50),
+      controller: attendanceController,
+      onConfirm: () async {
+        final success = await attendanceController.checkIn(
+          employeeCode: user!.employeeCode,
+        );
+        if (success && context.mounted) {
+          _showSuccessDialog(context, 'Check-in Successful!');
+          await authController.refreshAttendanceHistory();
+          await attendanceController.fetchTodayStatus(user.employeeCode);
+        }
+      },
+    );
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 10),
+            Text('Check-in Failed'),
+          ],
+        ),
+        content: Text(message),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _AttendancePieChart extends StatefulWidget {
   final List<Attendance> attendanceHistory;
