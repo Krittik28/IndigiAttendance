@@ -170,6 +170,87 @@ class AuthController with ChangeNotifier {
     }
   }
 
+  Future<bool> updateProfileImage(String imagePath) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      final newImageUrl = await ApiService.updateProfileImage(
+        empCode: _currentUser!.employeeCode,
+        imagePath: imagePath,
+      );
+
+      if (newImageUrl != null) {
+        // Update local user object
+        _currentUser = _currentUser!.copyWith(empAttachmentUrl: newImageUrl);
+        
+        // Update saved JSON data in shared preferences
+        final userData = await SharedPrefsService.getUserData();
+        if (userData != null) {
+          final userMap = json.decode(userData['userData']!);
+          userMap['emp_attachment_url'] = newImageUrl;
+          
+          await SharedPrefsService.saveUserData(
+            employeeCode: userData['employeeCode']!,
+            password: userData['password']!,
+            userData: json.encode(userMap),
+          );
+        }
+        
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+      _isLoading = false;
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePassword(String newPassword) async {
+    if (_currentUser == null) return false;
+
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      final success = await ApiService.changePassword(
+        empCode: _currentUser!.employeeCode,
+        newPassword: newPassword,
+      );
+
+      if (success) {
+        // Update saved password in shared preferences for auto-login
+        final userData = await SharedPrefsService.getUserData();
+        if (userData != null) {
+          await SharedPrefsService.saveUserData(
+            employeeCode: userData['employeeCode']!,
+            password: newPassword,
+            userData: userData['userData']!,
+          );
+        }
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+      _isLoading = false;
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     // Clear shared preferences
     await SharedPrefsService.clearUserData();

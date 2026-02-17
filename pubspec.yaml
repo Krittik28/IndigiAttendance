@@ -1,7 +1,7 @@
 name: indigi_attendance
 description: "Indigi Attendance is a mobile application for managing employee attendance."
 publish_to: 'none'
-version: 1.1.1+4
+version: 1.1.2+5
 
 environment:
   sdk: ^3.9.2
