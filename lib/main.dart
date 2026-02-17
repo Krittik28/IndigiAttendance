@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:upgrader/upgrader.dart';
-import 'controllers/auth_controller.dart';
-import 'views/login_screen.dart';
-import 'views/dashboard_screen.dart';
-import 'controllers/attendance_controller.dart';
-import 'controllers/leave_controller.dart';
+import 'package:indigi_attendance/controllers/auth_controller.dart';
+import 'package:indigi_attendance/controllers/attendance_controller.dart';
+import 'package:indigi_attendance/controllers/leave_controller.dart';
+import 'package:indigi_attendance/views/login_screen.dart';
+import 'package:indigi_attendance/views/dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

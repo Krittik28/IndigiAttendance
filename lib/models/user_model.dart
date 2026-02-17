@@ -24,6 +24,22 @@ class User {
       empAttachmentUrl: json['emp_attachment_url'],
     );
   }
+
+  User copyWith({
+    int? id,
+    String? employeeCode,
+    String? name,
+    String? email,
+    String? empAttachmentUrl,
+  }) {
+    return User(
+      id: id ?? this.id,
+      employeeCode: employeeCode ?? this.employeeCode,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      empAttachmentUrl: empAttachmentUrl ?? this.empAttachmentUrl,
+    );
+  }
 }
 
 class LoginResponse {

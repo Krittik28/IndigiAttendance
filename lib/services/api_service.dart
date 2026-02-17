@@ -8,7 +8,7 @@ class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
 
   static Future<LoginResponse> login(String empCode, String password, {String? deviceId, String? deviceModel}) async {
-    final url = Uri.parse('$baseUrl/empLoginTest');
+    final url = Uri.parse('$baseUrl/empLogin');
     
     final body = {
       'emp_code': empCode,
@@ -174,29 +174,52 @@ class ApiService {
     }
   }
 
-  static Future<LeaveBalance> getLeaveBalance(int userId) async {
-    final url = Uri.parse('$baseUrl/leave/current/$userId');
-    print('Fetching leave balance for user: $userId');
+  static Future<LeaveHistoryResponse> getLeaveList(String employeeCode, {int page = 1}) async {
+    final url = Uri.parse('$baseUrl/leaves/list');
+    print('Fetching leave list for empCode: $employeeCode, page: $page');
     
-    final response = await http.get(
+    final response = await http.post(
       url,
       headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
+      },
+      body: {
+        'emp_code': employeeCode,
+        'page': page.toString(),
       },
     );
 
-    print('Leave Balance Response Status: ${response.statusCode}');
-    print('Leave Balance Response Body: ${response.body}');
-
+    print('Leave List Response Status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
-      if (jsonResponse['success'] == true) {
-        return LeaveBalance.fromJson(jsonResponse['data']);
+      if (jsonResponse['status'] == true) {
+        final balances = jsonResponse['balances'];
+        final historyData = jsonResponse['leave_history'];
+        final empType = jsonResponse['employee_type'];
+        
+        final balance = LeaveBalance.fromJson(
+          balances, 
+          empType: empType,
+          // total and remaining will be handled by the model's fromJson logic
+        );
+
+        final history = List<LeaveRequest>.from(
+          historyData['data'].map((x) => LeaveRequest.fromJson(x))
+        );
+
+        return LeaveHistoryResponse(
+          balance: balance,
+          history: history,
+          currentPage: historyData['current_page'],
+          lastPage: historyData['last_page'],
+          total: historyData['total'],
+        );
       } else {
-        throw Exception(jsonResponse['message'] ?? 'Failed to fetch leave balance');
+        throw Exception(jsonResponse['message'] ?? 'Failed to fetch leave list');
       }
     } else {
-      throw Exception('Failed to fetch leave balance - Status: ${response.statusCode}');
+      throw Exception('Failed to fetch leave list - Status: ${response.statusCode}');
     }
   }
 
@@ -250,6 +273,135 @@ class ApiService {
       throw Exception(jsonResponse['message'] ?? 'Validation failed');
     } else {
       throw Exception('Failed to apply for leave - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> updateLeave({
+    required int leaveId,
+    required String empCode,
+    required String fromDate,
+    required String toDate,
+    required String reason,
+    required String type,
+    required double noOfDays,
+  }) async {
+    final url = Uri.parse('$baseUrl/leave/edit');
+    
+    print('Updating leave: $leaveId for $empCode');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'leave_id': leaveId.toString(),
+        'emp_code': empCode,
+        'from_date': fromDate,
+        'to_date': toDate,
+        'reason': reason,
+        'type': type,
+        'no_of_days': noOfDays.toString(),
+      },
+    );
+
+    print('Update Leave Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['status'] == true;
+    } else {
+      throw Exception('Failed to update leave - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> cancelLeave({
+    required int leaveId,
+    required String empCode,
+  }) async {
+    final url = Uri.parse('$baseUrl/leave/cancel');
+    
+    print('Cancelling leave: $leaveId for $empCode');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'leave_id': leaveId.toString(),
+        'emp_code': empCode,
+      },
+    );
+
+    print('Cancel Leave Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['status'] == true;
+    } else {
+      throw Exception('Failed to cancel leave - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> changePassword({
+    required String empCode,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse('$baseUrl/profile/update');
+    
+    print('Changing password for: $empCode');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'emp_code': empCode,
+        'password': newPassword,
+      },
+    );
+
+    print('Change Password Response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['status'] == true;
+    } else {
+      throw Exception('Failed to change password - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<String?> updateProfileImage({
+    required String empCode,
+    required String imagePath,
+  }) async {
+    final url = Uri.parse('$baseUrl/profile/image');
+    print('Updating profile image for: $empCode');
+
+    final request = http.MultipartRequest('POST', url);
+    request.fields['emp_code'] = empCode;
+    request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    print('Update Profile Image Response Status: ${response.statusCode}');
+    print('Update Profile Image Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['status'] == true) {
+        return jsonResponse['image_url']; // Assuming the API returns the new URL
+      } else {
+        throw Exception(jsonResponse['message'] ?? 'Failed to update profile image');
+      }
+    } else {
+      throw Exception('Failed to update profile image - Status: ${response.statusCode}');
     }
   }
 }

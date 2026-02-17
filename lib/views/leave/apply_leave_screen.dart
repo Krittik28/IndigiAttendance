@@ -3,12 +3,13 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../controllers/leave_controller.dart';
-import '../../controllers/auth_controller.dart';
+import 'package:indigi_attendance/controllers/leave_controller.dart';
+import 'package:indigi_attendance/controllers/auth_controller.dart';
 import '../../models/leave_model.dart';
 
 class ApplyLeaveScreen extends StatefulWidget {
-  const ApplyLeaveScreen({super.key});
+  final LeaveRequest? existingRequest;
+  const ApplyLeaveScreen({super.key, this.existingRequest});
 
   @override
   State<ApplyLeaveScreen> createState() => _ApplyLeaveScreenState();
@@ -25,6 +26,19 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   
   // Validation message from local checks
   String? _validationMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingRequest != null) {
+      _selectedType = widget.existingRequest!.type;
+      _selectedDateRange = DateTimeRange(
+        start: widget.existingRequest!.startDate,
+        end: widget.existingRequest!.endDate,
+      );
+      _reasonController.text = widget.existingRequest!.reason;
+    }
+  }
 
   @override
   void dispose() {
@@ -112,14 +126,14 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = Provider.of<LeaveController>(context);
-    final isProbation = controller.balance?.isProbation ?? false;
+    final isProbation = controller.balance?.employeeType?.toLowerCase() == 'probation';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: const Text(
-          'Apply for Leave',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        title: Text(
+          widget.existingRequest != null ? 'Edit Leave' : 'Apply for Leave',
+          style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -187,13 +201,13 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
                 const SizedBox(height: 24),
                 
                 if (_selectedType == LeaveType.sickLeave && (_selectedDateRange?.duration.inDays ?? 0) + 1 >= 3) ...[
-                   _buildSectionLabel('Prescription (Mandatory)'),
+                   _buildSectionLabel('Prescription (Optional)'),
                    const SizedBox(height: 8),
                    _buildAttachmentUpload(),
                    const SizedBox(height: 8),
                    Text(
-                     'Medical certificate is mandatory for 3 or more consecutive days.',
-                     style: TextStyle(fontSize: 12, color: Colors.red[400], fontWeight: FontWeight.w500),
+                     'You can upload a medical certificate if available.',
+                     style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
                    ),
                    const SizedBox(height: 32),
                 ],
@@ -216,9 +230,9 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
                             width: 20,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
-                        : const Text(
-                            'Submit Application',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        : Text(
+                            widget.existingRequest != null ? 'Update Application' : 'Submit Application',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
@@ -303,6 +317,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
           context: context,
           firstDate: DateTime.now().subtract(const Duration(days: 0)), // Can't apply for past in general
           lastDate: DateTime.now().add(const Duration(days: 365)),
+          initialDateRange: _selectedDateRange,
           builder: (context, child) {
             return Theme(
               data: Theme.of(context).copyWith(
@@ -398,7 +413,7 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
             Expanded(
               child: Text(
                 _attachmentName ?? 'Upload Medical Certificate',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.indigo, 
                   fontWeight: FontWeight.w500,
                 ),
@@ -470,16 +485,6 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
         return;
       }
 
-      // Special Check for Sick Leave > 3 days requiring Attachment
-      if (_selectedType == LeaveType.sickLeave && 
-          (_selectedDateRange!.duration.inDays + 1) >= 3 && 
-          _attachmentPath == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(content: Text('Please upload the medical certificate')),
-        );
-        return;
-      }
-
       final authController = Provider.of<AuthController>(context, listen: false);
       final empCode = authController.currentUser?.employeeCode;
 
@@ -492,18 +497,30 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
 
       final controller = Provider.of<LeaveController>(context, listen: false);
       
-      final success = await controller.submitLeaveRequest(
-        empCode: empCode,
-        type: _selectedType!,
-        start: _selectedDateRange!.start,
-        end: _selectedDateRange!.end,
-        reason: _reasonController.text,
-        attachmentPath: _attachmentPath,
-      );
+      bool success;
+      if (widget.existingRequest != null) {
+        success = await controller.updateLeaveRequest(
+          leaveId: widget.existingRequest!.id,
+          empCode: empCode,
+          type: _selectedType!,
+          start: _selectedDateRange!.start,
+          end: _selectedDateRange!.end,
+          reason: _reasonController.text,
+        );
+      } else {
+        success = await controller.submitLeaveRequest(
+          empCode: empCode,
+          type: _selectedType!,
+          start: _selectedDateRange!.start,
+          end: _selectedDateRange!.end,
+          reason: _reasonController.text,
+          attachmentPath: _attachmentPath,
+        );
+      }
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Leave request submitted successfully!')),
+          SnackBar(content: Text(widget.existingRequest != null ? 'Leave request updated successfully!' : 'Leave request submitted successfully!')),
         );
         Navigator.pop(context); // Go back to dashboard
       }
