@@ -201,12 +201,12 @@ class _ApplyLeaveScreenState extends State<ApplyLeaveScreen> {
                 const SizedBox(height: 24),
                 
                 if (_selectedType == LeaveType.sickLeave && (_selectedDateRange?.duration.inDays ?? 0) + 1 >= 3) ...[
-                   _buildSectionLabel('Prescription (Optional)'),
+                   _buildSectionLabel('Prescription/Medical Certificate'),
                    const SizedBox(height: 8),
                    _buildAttachmentUpload(),
                    const SizedBox(height: 8),
                    Text(
-                     'You can upload a medical certificate if available.',
+                     'You can upload a medical certificate for Sick Leave.',
                      style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
                    ),
                    const SizedBox(height: 32),

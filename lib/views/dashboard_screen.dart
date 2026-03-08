@@ -2029,7 +2029,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             userLocation: LatLng(position!.latitude, position.longitude),
             officeLocation: const LatLng(officeLat, officeLong),
             distance: distanceInMeters,
-            isWithinRange: distanceInMeters <= 20,
+            isWithinRange: distanceInMeters <= 40,
             onConfirm: () async {
               Navigator.pop(ctx); // Close Map Dialog
               

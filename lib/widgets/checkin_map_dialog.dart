@@ -88,7 +88,7 @@ class _CheckInMapDialogState extends State<CheckInMapDialog> {
                         ),
                       ),
                       Text(
-                        'Distance: ${widget.distance.toStringAsFixed(0)}m (Max 20m)',
+                        'Distance: ${widget.distance.toStringAsFixed(0)}m (Max 40m)',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[600],
@@ -145,7 +145,7 @@ class _CheckInMapDialogState extends State<CheckInMapDialog> {
                 Circle(
                   circleId: const CircleId('geofence'),
                   center: widget.officeLocation,
-                  radius: 20, // 20 meters
+                  radius: 40, // 40 meters
                   fillColor: Colors.blue.withValues(alpha: 0.25),
                   strokeColor: Colors.blue.withValues(alpha: 0.6),
                   strokeWidth: 2,
