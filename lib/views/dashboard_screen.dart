@@ -12,6 +12,7 @@ import '../controllers/attendance_controller.dart';
 import '../views/history_screen.dart';
 import '../views/holiday_screen.dart';
 import '../views/leave/leave_dashboard_screen.dart';
+import '../views/leave/leave_approval_list_screen.dart';
 import '../models/attendance_model.dart';
 import '../models/user_model.dart';
 import '../models/holiday_model.dart';
@@ -42,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       att.fetchInitialLocation();
       if (auth.currentUser != null) {
         att.fetchTodayStatus(auth.currentUser!.employeeCode);
+        auth.fetchPendingLeaves();
       }
     });
   }
@@ -467,6 +469,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         );
                       },
                     ),
+                    if (user?.canApproveLeave == true)
+                      _buildMenuItem(
+                        icon: Icons.fact_check_outlined,
+                        label: 'Leave Approvals',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LeaveApprovalListScreen()),
+                          );
+                        },
+                      ),
                     _buildMenuItem(
                       icon: Icons.calendar_month_outlined,
                       label: 'Holiday List',
@@ -586,6 +600,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           await attendanceController.fetchInitialLocation();
           if (user != null) {
             await attendanceController.fetchTodayStatus(user.employeeCode);
+            await authController.fetchPendingLeaves();
           }
         },
         color: Colors.indigo,
@@ -769,6 +784,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         
                                       // Monthly Summary Chart
                                       _buildChartSection(authController.attendanceHistory),
+                    
+                    if (user != null && user.canApproveLeave)
+                      _buildPendingApprovalsCard(user),
+
                     const SizedBox(height: 24),
 
                     // Today's Status Card
@@ -992,6 +1011,191 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       child: const Center(
         child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
+  }
+
+  Widget _buildPendingApprovalsCard(User user) {
+    if (user.pendingLeaveCount == 0 && user.pendingLeaveByEmployee.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.indigo.withValues(alpha: 0.05), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.pending_actions_rounded, color: Colors.orange, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Leave Approvals',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'Pending Requests',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${user.pendingLeaveCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+            ],
+          ),
+          if (user.pendingLeaveByEmployee.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            ...user.pendingLeaveByEmployee.map((leave) {
+              final isLast = user.pendingLeaveByEmployee.last == leave;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.indigo,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.indigo.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            leave.employeeName.isNotEmpty ? leave.employeeName[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          leave.employeeName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${leave.count}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LeaveApprovalListScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Review All Requests',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../services/api_service.dart';
 import '../services/shared_prefs_service.dart';
 import '../services/device_service.dart';
+import '../services/notification_service.dart';
 import '../models/user_model.dart';
 import '../models/attendance_model.dart';
 
@@ -95,11 +96,15 @@ class AuthController with ChangeNotifier {
       // Fetch Device ID and Model for security binding
       final deviceDetails = await DeviceService.getDeviceDetails();
       
+      // Fetch FCM Token for notifications
+      // final fcmToken = await NotificationService.getToken();
+      
       final response = await ApiService.login(
         empCode, 
         password,
         deviceId: deviceDetails['device_id'],
         deviceModel: deviceDetails['device_model'],
+        // fcmToken: fcmToken,
       );
       
       if (response.status && response.user != null) {
@@ -119,6 +124,9 @@ class AuthController with ChangeNotifier {
               'name': response.user!.name,
               'email': response.user!.email,
               'emp_attachment_url': response.user!.empAttachmentUrl,
+              'can_approve_leave': response.user!.canApproveLeave,
+              'pending_leave_count': response.user!.pendingLeaveCount,
+              'pending_leave_by_employee': response.user!.pendingLeaveByEmployee.map((e) => e.toJson()).toList(),
             }),
           );
         }
@@ -147,6 +155,29 @@ class AuthController with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> fetchPendingLeaves() async {
+    if (_currentUser == null || !_currentUser!.canApproveLeave) return;
+
+    try {
+      final data = await ApiService.getPendingLeaves(_currentUser!.employeeCode);
+      
+      final newCount = data['pending_leave_count'] is int 
+          ? data['pending_leave_count'] 
+          : int.tryParse(data['pending_leave_count'].toString()) ?? 0;
+          
+      final newListData = data['pending_leave_by_employee'] as List<dynamic>? ?? [];
+      final newList = newListData.map((e) => PendingLeaveByEmployee.fromJson(e as Map<String, dynamic>)).toList();
+
+      _currentUser = _currentUser!.copyWith(
+        pendingLeaveCount: newCount,
+        pendingLeaveByEmployee: newList,
+      );
+      notifyListeners();
+    } catch (e) {
+      print('Error fetching pending leaves: $e');
     }
   }
 

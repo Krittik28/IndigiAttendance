@@ -3,16 +3,17 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
     namespace = "com.indigi.indigi_attendance_app"
     compileSdk = 36
-    // ndkVersion = "25.1.8937393" // Use latest NDK version
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -20,14 +21,12 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.indigi.indigi_attendance_app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
     }
 
     signingConfigs {
@@ -45,12 +44,8 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
         }
-        getByName("debug") {
-            // Add debug configuration if needed
-        }
     }
 
-    // Add this for Android 14+ compatibility
     packagingOptions {
         resources {
             excludes += setOf(
@@ -67,7 +62,6 @@ android {
         }
     }
 
-    // Add for better build performance
     buildFeatures {
         buildConfig = true
     }
@@ -78,11 +72,7 @@ flutter {
 }
 
 dependencies {
-    // Latest Play Core libraries compatible with SDK 36
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
-    
-    // Optional: If using in-app reviews
-    // implementation("com.google.android.play:review:2.0.1")
-    // implementation("com.google.android.play:review-ktx:2.0.1")
 }

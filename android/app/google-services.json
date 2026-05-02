@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "321686427456",
+    "project_id": "indigihrm-5ee9e",
+    "storage_bucket": "indigihrm-5ee9e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:321686427456:android:a4c8be8f643937b9b24ca5",
+        "android_client_info": {
+          "package_name": "com.indigi.indigi_attendance_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCcLN2vzofZHQ2wgvfIABADDSDSEhme3Kk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

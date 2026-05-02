@@ -7,8 +7,8 @@ import '../models/leave_model.dart';
 class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
 
-  static Future<LoginResponse> login(String empCode, String password, {String? deviceId, String? deviceModel}) async {
-    final url = Uri.parse('$baseUrl/empLogin');
+  static Future<LoginResponse> login(String empCode, String password, {String? deviceId, String? deviceModel, String? fcmToken}) async {
+    final url = Uri.parse('$baseUrl/empLoginTest');
     
     final body = {
       'emp_code': empCode,
@@ -21,6 +21,9 @@ class ApiService {
     if (deviceModel != null) {
       body['registered_device_model'] = deviceModel;
     }
+    // if (fcmToken != null) {
+    //   body['fcm_token'] = fcmToken;
+    // }
 
     final response = await http.post(
       url,
@@ -191,6 +194,7 @@ class ApiService {
     );
 
     print('Leave List Response Status: ${response.statusCode}');
+    print('Leave List Response Body: ${response.body}');
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       if (jsonResponse['status'] == true) {
@@ -220,6 +224,136 @@ class ApiService {
       }
     } else {
       throw Exception('Failed to fetch leave list - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<List<LeaveRequest>> getLeaveApprovalList(String employeeCode, {int page = 1, int perPage = 15}) async {
+    final url = Uri.parse('$baseUrl/leaveApprovalList?emp_code=$employeeCode&page=$page&per_page=$perPage');
+    print('Fetching leave approval list for empCode: $employeeCode, page: $page');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'emp_code': employeeCode,
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      },
+    );
+
+    print('Leave Approval List Response Status: ${response.statusCode}');
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['status'] == true) {
+        var dataField = jsonResponse['data'];
+        List? data;
+        
+        if (dataField is Map) {
+          data = dataField['data'] as List?;
+        } else if (dataField is List) {
+          data = dataField;
+        }
+
+        final userType = jsonResponse['user_type']?.toString();
+        
+        if (data != null) {
+          return data.map((x) => LeaveRequest.fromJson(x, currentApproverType: userType)).toList();
+        }
+        return [];
+      } else {
+        throw Exception(jsonResponse['message'] ?? 'Failed to fetch leave approval list');
+      }
+    } else {
+      throw Exception('Failed to fetch leave approval list - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> undoLeave({
+    required int leaveId,
+    required String empCode,
+  }) async {
+    final url = Uri.parse('$baseUrl/undoLeaveApi');
+    print('Undo Leave: leave_id=$leaveId emp_code=$empCode');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'leave_id': leaveId.toString(),
+        'emp_code': empCode,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['status'] == true;
+    } else {
+      throw Exception('Failed to undo leave - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<bool> leaveAction({
+    required int leaveId,
+    required String empCode,
+    required String status,
+  }) async {
+    final url = Uri.parse('$baseUrl/leaveAction');
+    print('Leave Action: leave_id=$leaveId emp_code=$empCode status=$status');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: {
+        'leave_id': leaveId.toString(),
+        'emp_code': empCode,
+        'status': status,
+      },
+    );
+
+    print('Leave Action Response Status: ${response.statusCode}');
+    print('Leave Action Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      return jsonResponse['status'] == true;
+    } else {
+      throw Exception('Failed to perform leave action - Status: ${response.statusCode}');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPendingLeaves(String empCode) async {
+    final url = Uri.parse('$baseUrl/pendingLeavesApi?emp_code=$empCode');
+    print('Pending Leaves Request: emp_code=$empCode');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+
+    print('Pending Leaves Response Status: ${response.statusCode}');
+    print('Pending Leaves Response Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      final data = jsonResponse['data'] ?? {};
+      return {
+        'pending_leave_count': data['pending_leave_count'] ?? 0,
+        'pending_leave_by_employee': data['pending_leave_by_employee'] ?? [],
+      };
+    } else {
+      throw Exception('Failed to fetch pending leaves - Status: ${response.statusCode}');
     }
   }
 

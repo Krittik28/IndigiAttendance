@@ -329,6 +329,14 @@ class _LeaveDashboardScreenState extends State<LeaveDashboardScreen> {
         statusColor = Colors.green;
         statusText = 'Approved';
         break;
+      case LeaveStatus.rmApproved:
+        statusColor = Colors.teal;
+        statusText = 'RM Approved';
+        break;
+      case LeaveStatus.pmApproved:
+        statusColor = Colors.green;
+        statusText = 'PM Approved';
+        break;
       case LeaveStatus.applied:
         statusColor = Colors.blue;
         statusText = 'Applied';
