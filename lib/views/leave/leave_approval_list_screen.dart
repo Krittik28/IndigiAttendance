@@ -270,16 +270,39 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _getLeaveTypeName(request.type),
-                    style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(request.status).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _getStatusColor(request.status).withValues(alpha: 0.2)),
+                      ),
+                      child: Text(
+                        _getStatusName(request.status).toUpperCase(),
+                        style: TextStyle(
+                          color: _getStatusColor(request.status),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _getLeaveTypeName(request.type),
+                        style: const TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -332,6 +355,81 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
                   request.reason.isNotEmpty ? request.reason : 'No reason provided.',
                   style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.5),
                 ),
+                
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Reporting Manager', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.person_outline, size: 14, color: Colors.indigo),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  request.rmName ?? 'Not Assigned',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Project Manager', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black54)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.person_outline, size: 14, color: Colors.indigo),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  request.pmName ?? 'Not Assigned',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                
+                if (request.status == LeaveStatus.rejected && request.rejectionReason != null && request.rejectionReason!.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline, size: 18, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Rejection Reason: ${request.rejectionReason}',
+                            style: const TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 
                 if (request.leaveBalance != null) ...[
                   const SizedBox(height: 16),
@@ -576,6 +674,34 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       case LeaveType.workFromHome: return 'Work From Home';
       case LeaveType.compOff: return 'Comp-Off';
       case LeaveType.lwp: return 'LWP';
+    }
+  }
+
+  Color _getStatusColor(LeaveStatus status) {
+    switch (status) {
+      case LeaveStatus.pending:
+      case LeaveStatus.applied:
+        return Colors.blue;
+      case LeaveStatus.approved:
+      case LeaveStatus.rmApproved:
+      case LeaveStatus.pmApproved:
+        return Colors.green;
+      case LeaveStatus.rejected:
+        return Colors.red;
+      case LeaveStatus.cancelled:
+        return Colors.grey;
+    }
+  }
+
+  String _getStatusName(LeaveStatus status) {
+    switch (status) {
+      case LeaveStatus.pending: return 'Pending';
+      case LeaveStatus.applied: return 'Applied';
+      case LeaveStatus.approved: return 'Approved';
+      case LeaveStatus.rejected: return 'Rejected';
+      case LeaveStatus.cancelled: return 'Cancelled';
+      case LeaveStatus.rmApproved: return 'RM Approved';
+      case LeaveStatus.pmApproved: return 'Final Approved';
     }
   }
 }
