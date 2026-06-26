@@ -20,14 +20,14 @@ class AttendanceController with ChangeNotifier {
 
   Future<Map<String, String>?> fetchLocationSilent() async {
     try {
-      print('📍 Silently fetching location...');
+      debugPrint('📍 Silently fetching location...');
       final location = await LocationService.getCurrentLocation();
       _cachedLocation = location;
       // We don't notifyListeners here to avoid rebuilding during a build phase
       // The dialog will handle the display of this specific fetch
       return location;
     } catch (e) {
-      print('⚠️ Failed to fetch silent location: $e');
+      debugPrint('⚠️ Failed to fetch silent location: $e');
       return null;
     }
   }
@@ -37,18 +37,18 @@ class AttendanceController with ChangeNotifier {
     notifyListeners();
     
     try {
-      print('📍 Fetching initial location for dashboard...');
+      debugPrint('📍 Fetching initial location for dashboard...');
       _cachedLocation = await LocationService.getCurrentLocation();
-      print('📍 Initial location fetched: ${_cachedLocation!['location']}');
+      debugPrint('📍 Initial location fetched: ${_cachedLocation!['location']}');
     } catch (e) {
-      print('⚠️ Failed to fetch initial location: $e');
+      debugPrint('⚠️ Failed to fetch initial location: $e');
     } finally {
       _isFetchingLocation = false;
       notifyListeners();
     }
   }
 
-  Future<bool> checkIn({required String employeeCode}) async {
+  Future<String?> checkIn({required String employeeCode}) async {
     _isLoading = true;
     _errorMessage = '';
     _currentProcessingData = null;
@@ -61,13 +61,13 @@ class AttendanceController with ChangeNotifier {
         // Update cache with successful fetch
         _cachedLocation = locationData;
       } catch (e) {
-        print('⚠️ Live location fetch failed during check-in: $e');
+        debugPrint('⚠️ Live location fetch failed during check-in: $e');
         if (_cachedLocation != null) {
-          print('ℹ️ Using cached location: ${_cachedLocation!['location']}');
+          debugPrint('ℹ️ Using cached location: ${_cachedLocation!['location']}');
           locationData = _cachedLocation!;
         } else {
           // Try one last time to get *any* location or fail
-          print('⚠️ No cached location available. Retrying one last time...');
+          debugPrint('⚠️ No cached location available. Retrying one last time...');
           locationData = await LocationService.getCurrentLocation();
         }
       }
@@ -81,11 +81,11 @@ class AttendanceController with ChangeNotifier {
       };
       notifyListeners();
 
-      print('=== CHECK-IN DEBUG INFO ===');
-      print('Employee Code: $employeeCode');
-      print('Location: ${locationData['location']}');
-      print('Coordinates: ${locationData['latitude']}, ${locationData['longitude']}');
-      print('==========================');
+      debugPrint('=== CHECK-IN DEBUG INFO ===');
+      debugPrint('Employee Code: $employeeCode');
+      debugPrint('Location: ${locationData['location']}');
+      debugPrint('Coordinates: ${locationData['latitude']}, ${locationData['longitude']}');
+      debugPrint('==========================');
 
       final response = await ApiService.checkIn(
         employeeCode: employeeCode,
@@ -94,7 +94,7 @@ class AttendanceController with ChangeNotifier {
         location: locationData['location']!,
       );
 
-      if (response.status && response.data != null) {
+      if (response.status) {
         _currentAttendance = response.data;
         _isLoading = false;
         _errorMessage = '';
@@ -105,29 +105,34 @@ class AttendanceController with ChangeNotifier {
         
         notifyListeners();
         
-        print('✅ Check-in successful!');
-        return true;
+        debugPrint('✅ Check-in successful!');
+        return (response.warningMessage != null && response.warningMessage!.isNotEmpty)
+            ? response.warningMessage
+            : response.message;
       } else {
         _errorMessage = _getUserFriendlyErrorMessage(response.message, 'checkin');
         _isLoading = false;
         _currentProcessingData = null;
         notifyListeners();
         
-        print('❌ Check-in failed: ${response.message}');
-        return false;
+        debugPrint('❌ Check-in failed: ${response.message}');
+        return null;
       }
     } catch (e) {
-      print('💥 Check-in exception: $e');
+      debugPrint('💥 Check-in exception: $e');
       
       _errorMessage = _getUserFriendlyErrorMessage(e.toString(), 'checkin');
       _isLoading = false;
       _currentProcessingData = null;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 
-  Future<bool> checkOut({required String employeeCode}) async {
+  Future<String?> checkInWithClient({
+    required String employeeCode,
+    required int clientId,
+  }) async {
     _isLoading = true;
     _errorMessage = '';
     _currentProcessingData = null;
@@ -140,13 +145,96 @@ class AttendanceController with ChangeNotifier {
         // Update cache with successful fetch
         _cachedLocation = locationData;
       } catch (e) {
-        print('⚠️ Live location fetch failed during check-out: $e');
+        debugPrint('⚠️ Live location fetch failed during client check-in: $e');
         if (_cachedLocation != null) {
-          print('ℹ️ Using cached location: ${_cachedLocation!['location']}');
+          debugPrint('ℹ️ Using cached location: ${_cachedLocation!['location']}');
+          locationData = _cachedLocation!;
+        } else {
+          // Try one last time to get *any* location or fail
+          debugPrint('⚠️ No cached location available. Retrying one last time...');
+          locationData = await LocationService.getCurrentLocation();
+        }
+      }
+      
+      // Set current processing data
+      _currentProcessingData = {
+        'type': 'checkin',
+        'time': DateTime.now(),
+        'location': locationData['location'],
+        'coordinates': '${locationData['latitude']}, ${locationData['longitude']}',
+      };
+      notifyListeners();
+
+      debugPrint('=== CLIENT CHECK-IN DEBUG INFO ===');
+      debugPrint('Employee Code: $employeeCode');
+      debugPrint('Client ID: $clientId');
+      debugPrint('Location: ${locationData['location']}');
+      debugPrint('Coordinates: ${locationData['latitude']}, ${locationData['longitude']}');
+      debugPrint('=================================');
+
+      final response = await ApiService.checkInWithClient(
+        employeeCode: employeeCode,
+        latitude: locationData['latitude']!,
+        longitude: locationData['longitude']!,
+        location: locationData['location']!,
+        clientId: clientId,
+      );
+
+      if (response.status) {
+        _currentAttendance = response.data;
+        _isLoading = false;
+        _errorMessage = '';
+        _currentProcessingData = null;
+        
+        // Refresh today's status to update the dashboard UI
+        await fetchTodayStatus(employeeCode);
+        
+        notifyListeners();
+        
+        debugPrint('✅ Client Check-in successful!');
+        return (response.warningMessage != null && response.warningMessage!.isNotEmpty)
+            ? response.warningMessage
+            : response.message;
+      } else {
+        _errorMessage = _getUserFriendlyErrorMessage(response.message, 'checkin');
+        _isLoading = false;
+        _currentProcessingData = null;
+        notifyListeners();
+        
+        debugPrint('❌ Client Check-in failed: ${response.message}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('💥 Client Check-in exception: $e');
+      
+      _errorMessage = _getUserFriendlyErrorMessage(e.toString(), 'checkin');
+      _isLoading = false;
+      _currentProcessingData = null;
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<String?> checkOut({required String employeeCode}) async {
+    _isLoading = true;
+    _errorMessage = '';
+    _currentProcessingData = null;
+    notifyListeners();
+
+    try {
+      Map<String, String> locationData;
+      try {
+        locationData = await LocationService.getCurrentLocation();
+        // Update cache with successful fetch
+        _cachedLocation = locationData;
+      } catch (e) {
+        debugPrint('⚠️ Live location fetch failed during check-out: $e');
+        if (_cachedLocation != null) {
+          debugPrint('ℹ️ Using cached location: ${_cachedLocation!['location']}');
           locationData = _cachedLocation!;
         } else {
            // Try one last time to get *any* location or fail
-          print('⚠️ No cached location available. Retrying one last time...');
+          debugPrint('⚠️ No cached location available. Retrying one last time...');
           locationData = await LocationService.getCurrentLocation();
         }
       }
@@ -160,11 +248,11 @@ class AttendanceController with ChangeNotifier {
       };
       notifyListeners();
 
-      print('=== CHECK-OUT DEBUG INFO ===');
-      print('Employee Code: $employeeCode');
-      print('Location: ${locationData['location']}');
-      print('Coordinates: ${locationData['latitude']}, ${locationData['longitude']}');
-      print('===========================');
+      debugPrint('=== CHECK-OUT DEBUG INFO ===');
+      debugPrint('Employee Code: $employeeCode');
+      debugPrint('Location: ${locationData['location']}');
+      debugPrint('Coordinates: ${locationData['latitude']}, ${locationData['longitude']}');
+      debugPrint('===========================');
 
       final response = await ApiService.checkOut(
         employeeCode: employeeCode,
@@ -173,7 +261,7 @@ class AttendanceController with ChangeNotifier {
         location: locationData['location']!,
       );
 
-      if (response.status && response.data != null) {
+      if (response.status) {
         _currentAttendance = response.data;
         _isLoading = false;
         _errorMessage = '';
@@ -184,32 +272,34 @@ class AttendanceController with ChangeNotifier {
         
         notifyListeners();
         
-        print('✅ Check-out successful!');
-        return true;
+        debugPrint('✅ Check-out successful!');
+        return (response.warningMessage != null && response.warningMessage!.isNotEmpty)
+            ? response.warningMessage
+            : response.message;
       } else {
         _errorMessage = _getUserFriendlyErrorMessage(response.message, 'checkout');
         _isLoading = false;
         _currentProcessingData = null;
         notifyListeners();
         
-        print('❌ Check-out failed: ${response.message}');
-        return false;
+        debugPrint('❌ Check-out failed: ${response.message}');
+        return null;
       }
     } catch (e) {
-      print('💥 Check-out exception: $e');
+      debugPrint('💥 Check-out exception: $e');
       
       _errorMessage = _getUserFriendlyErrorMessage(e.toString(), 'checkout');
       _isLoading = false;
       _currentProcessingData = null;
       notifyListeners();
-      return false;
+      return null;
     }
   }
 
   String _getUserFriendlyErrorMessage(String apiMessage, String action) {
     final message = apiMessage.toLowerCase();
     
-    print('🔍 Raw error message: $apiMessage');
+    debugPrint('🔍 Raw error message: $apiMessage');
     
     // Remove validation restrictions since multiple entries are allowed
     if (message.contains('successful')) {
@@ -263,7 +353,7 @@ class AttendanceController with ChangeNotifier {
       };
       notifyListeners();
     } catch (e) {
-      print('Error getting today status: $e');
+      debugPrint('Error getting today status: $e');
       _todayStatus = {
         'checkinCount': 0,
         'checkoutCount': 0,

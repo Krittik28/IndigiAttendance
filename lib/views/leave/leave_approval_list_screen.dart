@@ -14,7 +14,7 @@ class LeaveApprovalListScreen extends StatefulWidget {
 
 class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
   final ScrollController _scrollController = ScrollController();
-  List<LeaveRequest> _approvals = [];
+  final List<LeaveRequest> _approvals = [];
   bool _isLoading = false;
   bool _hasMore = true;
   int _page = 1;

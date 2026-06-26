@@ -18,7 +18,7 @@ class NotificationService {
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       if (kDebugMode) {
-        print('User granted permission');
+        debugPrint('User granted permission');
       }
     }
 
@@ -63,8 +63,8 @@ class NotificationService {
     // 4. Listen for Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (kDebugMode) {
-        print('Got a message whilst in the foreground!');
-        print('Message data: ${message.data}');
+        debugPrint('Got a message whilst in the foreground!');
+        debugPrint('Message data: ${message.data}');
       }
 
       if (message.notification != null) {
@@ -75,7 +75,7 @@ class NotificationService {
     // 5. Handle Background/Terminated state taps
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       if (kDebugMode) {
-        print('Message clicked!');
+        debugPrint('Message clicked!');
       }
     });
   }
@@ -106,12 +106,12 @@ class NotificationService {
     try {
       String? token = await _firebaseMessaging.getToken();
       if (kDebugMode) {
-        print('FCM Token: $token');
+        debugPrint('FCM Token: $token');
       }
       return token;
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting FCM token: $e');
+        debugPrint('Error getting FCM token: $e');
       }
       return null;
     }

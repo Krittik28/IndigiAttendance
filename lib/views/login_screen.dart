@@ -195,11 +195,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () async {
                             if (_formKey.currentState!.validate()) {
-                              final success = await authController.login(
+                              await authController.login(
                                 _empCodeController.text.trim(),
                                 _passwordController.text.trim(),
                               );
-                              
+
                               // The main.dart will automatically redirect to dashboard
                               // because the authController state has changed via notifyListeners()
                             }

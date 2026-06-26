@@ -6,6 +6,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../widgets/checkin_map_dialog.dart';
+import 'dart:async' as async_timer;
+import '../widgets/client_selection_dialog.dart';
+import '../models/client_model.dart';
+import '../models/client_visit_model.dart';
+import '../controllers/client_visit_controller.dart';
+import '../views/client_visit_history_screen.dart';
 import 'package:upgrader/upgrader.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/attendance_controller.dart';
@@ -44,6 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (auth.currentUser != null) {
         att.fetchTodayStatus(auth.currentUser!.employeeCode);
         auth.fetchPendingLeaves();
+        Provider.of<ClientVisitController>(context, listen: false).fetchHistory(auth.currentUser!.employeeCode);
       }
     });
   }
@@ -574,6 +581,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final authController = Provider.of<AuthController>(context);
     final attendanceController = Provider.of<AttendanceController>(context);
+    final clientVisitController = Provider.of<ClientVisitController>(context);
     final user = authController.currentUser;
     final todayHoliday = _getTodayHoliday();
     final upcomingHolidays = _getUpcomingHolidays();
@@ -601,6 +609,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (user != null) {
             await attendanceController.fetchTodayStatus(user.employeeCode);
             await authController.fetchPendingLeaves();
+            await clientVisitController.fetchHistory(user.employeeCode);
           }
         },
         color: Colors.indigo,
@@ -810,6 +819,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         padding: const EdgeInsets.only(top: 16),
                         child: _buildErrorCard(attendanceController),
                       ),
+
+                    const SizedBox(height: 24),
+
+                    // Client Visit Card/Section
+                    _buildClientVisitSection(context, clientVisitController, user),
 
                     const SizedBox(height: 24),
 
@@ -1068,7 +1082,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1141,7 +1155,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           leave.employeeName,
                           style: const TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
                         ),
@@ -1256,6 +1270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                     color: Colors.grey[700],
                     fontSize: 13,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 if (status['lastCheckin'] != null)
@@ -1267,6 +1282,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Colors.grey[500],
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
@@ -1737,11 +1753,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     iconColor: const Color(0xFFFF9800),
                     controller: attendanceController,
                     onConfirm: () async {
-                      final success = await attendanceController.checkOut(
+                      final message = await attendanceController.checkOut(
                         employeeCode: user!.employeeCode,
                       );
-                      if (success && context.mounted) {
-                        _showSuccessDialog(context, 'Check-out Successful!');
+                      if (message != null && context.mounted) {
+                        _showSuccessDialog(context, message.isNotEmpty ? message : 'Check-out Successful!');
                         attendanceController.clearCurrentAttendance();
                         await authController.refreshAttendanceHistory();
                         await attendanceController.fetchTodayStatus(user.employeeCode);
@@ -1761,7 +1777,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _formatTime(String dateTime) {
     try {
-      final date = DateTime.parse(dateTime);
+      final date = DateTime.parse(dateTime).toLocal();
       final hour = date.hour % 12;
       final minute = date.minute.toString().padLeft(2, '0');
       final period = date.hour < 12 ? 'AM' : 'PM';
@@ -2166,7 +2182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
 
     try {
-      print('🚀 Starting Indigi Office Check-in process...');
+      debugPrint('🚀 Starting Indigi Office Check-in process...');
       
       // 1. Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -2190,7 +2206,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // 3. Fetch Fresh Location (Always fetch new for accuracy)
       Position? position;
-      print('🔄 Fetching fresh location (High Accuracy)...');
+      debugPrint('🔄 Fetching fresh location (High Accuracy)...');
       
       try {
         position = await Geolocator.getCurrentPosition(
@@ -2198,10 +2214,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           timeLimit: const Duration(seconds: 10),
         );
       } catch (e) {
-        print('⚠️ High accuracy fetch failed/timed out: $e');
+        debugPrint('⚠️ High accuracy fetch failed/timed out: $e');
         
         // Fallback to Balanced Accuracy (Better indoor/faster)
-        print('🔄 Retrying with Balanced Accuracy...');
+        debugPrint('🔄 Retrying with Balanced Accuracy...');
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 7),
@@ -2220,7 +2236,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         position.longitude,
       );
       
-      print('📏 Distance to office: ${distanceInMeters.toStringAsFixed(2)}m');
+      debugPrint('📏 Distance to office: ${distanceInMeters.toStringAsFixed(2)}m');
 
       // Close loading dialog
       if (context.mounted) Navigator.pop(context);
@@ -2238,11 +2254,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Navigator.pop(ctx); // Close Map Dialog
               
               // Proceed with Check-in
-              final success = await attendanceController.checkIn(
+              final message = await attendanceController.checkIn(
                 employeeCode: user!.employeeCode,
               );
-              if (success && context.mounted) {
-                _showSuccessDialog(context, 'Check-in Successful!');
+              if (message != null && context.mounted) {
+                _showSuccessDialog(context, message.isNotEmpty ? message : 'Check-in Successful!');
                 await authController.refreshAttendanceHistory();
                 await attendanceController.fetchTodayStatus(user.employeeCode);
               }
@@ -2251,7 +2267,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       }
     } catch (e) {
-      print('❌ Location Process Error: $e');
+      debugPrint('❌ Location Process Error: $e');
   }
   
   }
@@ -2262,49 +2278,615 @@ class _DashboardScreenState extends State<DashboardScreen> {
     User? user,
     AuthController authController,
   ) {
-    _showConfirmationDialog(
+    showDialog(
       context: context,
-      title: 'Confirm Check-in',
-      content: 'Check in from Client Site?',
-      icon: Icons.person_pin_circle,
-      iconColor: const Color(0xFF4CAF50),
-      controller: attendanceController,
-      onConfirm: () async {
-        final success = await attendanceController.checkIn(
-          employeeCode: user!.employeeCode,
-        );
-        if (success && context.mounted) {
-          _showSuccessDialog(context, 'Check-in Successful!');
-          await authController.refreshAttendanceHistory();
-          await attendanceController.fetchTodayStatus(user.employeeCode);
-        }
-      },
+      barrierDismissible: false,
+      builder: (_) => ClientSelectionDialog(
+        onClientSelected: (Client client) {
+          _showConfirmationDialog(
+            context: context,
+            title: 'Confirm Check-in',
+            content: 'Check in from client site: ${client.customerName}?',
+            icon: Icons.person_pin_circle,
+            iconColor: const Color(0xFF4CAF50),
+            controller: attendanceController,
+            onConfirm: () async {
+              final message = await attendanceController.checkInWithClient(
+                employeeCode: user!.employeeCode,
+                clientId: client.id,
+              );
+              if (message != null && context.mounted) {
+                _showSuccessDialog(context, message.isNotEmpty ? message : 'Check-in Successful!');
+                await authController.refreshAttendanceHistory();
+                await attendanceController.fetchTodayStatus(user.employeeCode);
+              }
+            },
+          );
+        },
+      ),
     );
   }
 
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
+  // --- Client Visit UI and Logics ---
+
+  Widget _buildClientVisitSection(
+    BuildContext context,
+    ClientVisitController controller,
+    User? user,
+  ) {
+    final ongoing = controller.ongoingVisit;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 10),
-            Text('Check-in Failed'),
+            const Text(
+              'Client Visits',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ClientVisitHistoryScreen(),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    Text(
+                      'History',
+                      style: TextStyle(
+                        color: Colors.indigo,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.indigo),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
-        content: Text(message),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK', style: TextStyle(color: Colors.red)),
+        const SizedBox(height: 12),
+        if (ongoing == null)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.indigo.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.business_center_rounded, color: Colors.indigo, size: 24),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Need to visit a client?',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Track your client check-in/out and locations.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _startClientVisitFlow(context, controller, user);
+                  },
+                  icon: const Icon(Icons.add_location_alt_rounded, size: 18),
+                  label: const Text('Start Client Visit', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          _buildOngoingVisitCard(context, controller, ongoing, user),
+      ],
+    );
+  }
+
+  Widget _buildOngoingVisitCard(
+    BuildContext context,
+    ClientVisitController controller,
+    ClientVisit ongoing,
+    User? user,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.indigo.shade50, Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.indigo.withValues(alpha: 0.2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.indigo.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ONGOING CLIENT VISIT',
+                    style: TextStyle(
+                      color: Colors.indigo.shade700,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              _OngoingVisitTimer(checkinTime: ongoing.checkinTime),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            ongoing.clientName,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.login_rounded, size: 14, color: Colors.green),
+              const SizedBox(width: 6),
+          Text(
+                'Checked in at ${_formatTime(ongoing.checkinTime)}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.location_on_rounded, size: 14, color: Colors.grey),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  ongoing.checkinLocation,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              _showClientVisitCheckoutDialog(context, controller, user);
+            },
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: const Text('Check Out of Site', style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
           ),
         ],
       ),
     );
   }
+
+  void _startClientVisitFlow(
+    BuildContext context,
+    ClientVisitController controller,
+    User? user,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ClientSelectionDialog(
+        onClientSelected: (Client client) {
+          _showClientVisitConfirmationDialog(context, controller, client, user);
+        },
+      ),
+    );
+  }
+
+  void _showClientVisitConfirmationDialog(
+    BuildContext context,
+    ClientVisitController controller,
+    Client client,
+    User? user,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogStatefulContext, setState) {
+            return FutureBuilder<Map<String, String>?>(
+              future: controller.fetchLocationSilent(),
+              builder: (context, snapshot) {
+                final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                final locationData = snapshot.data;
+                final location = locationData?['location'] ?? controller.cachedLocation?['location'] ?? 'Unknown Location';
+                final isLocationValid = location != 'Unknown Location';
+
+                return AlertDialog(
+                  title: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.add_location_alt_rounded, color: Colors.indigo, size: 28),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Client Visit Check-in',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Do you want to check in for a visit to ${client.customerName}?',
+                        style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isLocationValid ? Colors.grey[100] : Colors.red.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isLocationValid ? Colors.grey[300]! : Colors.red.withValues(alpha: 0.2)
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            if (isLoading) ...[
+                              const SizedBox(
+                                width: 16, 
+                                height: 16, 
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Fetching location...',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ] else ...[
+                              Icon(
+                                isLocationValid ? Icons.location_on : Icons.location_off, 
+                                size: 16, 
+                                color: isLocationValid ? Colors.grey[600] : Colors.red
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isLocationValid ? Colors.grey[800] : Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!isLocationValid)
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {}); 
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(Icons.refresh, size: 16, color: Colors.indigo),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  actionsAlignment: MainAxisAlignment.spaceBetween,
+                  actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      onPressed: (isLoading || !isLocationValid) ? null : () async {
+                        final navigator = Navigator.of(context);
+                        navigator.pop(); // Pop confirmation dialog
+                        
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.indigo)),
+                        );
+
+                        final success = await controller.checkIn(
+                          employeeCode: user!.employeeCode,
+                          client: client,
+                        );
+
+                        navigator.pop(); // Pop loading dialog
+
+                        if (success && context.mounted) {
+                          _showSuccessDialog(context, 'Checked in successfully for visit to ${client.customerName}');
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(controller.errorMessage)),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        disabledForegroundColor: Colors.grey[500],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      child: const Text('Confirm'),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        );
+      },
+    );
+  }
+
+  void _showClientVisitCheckoutDialog(
+    BuildContext context,
+    ClientVisitController controller,
+    User? user,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogStatefulContext, setState) {
+            return FutureBuilder<Map<String, String>?>(
+              future: controller.fetchLocationSilent(),
+              builder: (context, snapshot) {
+                final isLoading = snapshot.connectionState == ConnectionState.waiting;
+                final locationData = snapshot.data;
+                final location = locationData?['location'] ?? controller.cachedLocation?['location'] ?? 'Unknown Location';
+                final isLocationValid = location != 'Unknown Location';
+
+                return AlertDialog(
+                  title: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.logout_rounded, color: Colors.orange.shade700, size: 28),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Confirm Checkout',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Are you sure you want to end this client visit now?',
+                        style: TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isLocationValid ? Colors.grey[100] : Colors.red.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isLocationValid ? Colors.grey[300]! : Colors.red.withValues(alpha: 0.2)
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            if (isLoading) ...[
+                              const SizedBox(
+                                width: 16, 
+                                height: 16, 
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.grey),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Fetching location...',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ] else ...[
+                              Icon(
+                                isLocationValid ? Icons.location_on : Icons.location_off, 
+                                size: 16, 
+                                color: isLocationValid ? Colors.grey[600] : Colors.red
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  location,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isLocationValid ? Colors.grey[800] : Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (!isLocationValid)
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {}); 
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(Icons.refresh, size: 16, color: Colors.indigo),
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  actionsAlignment: MainAxisAlignment.spaceBetween,
+                  actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      onPressed: (isLoading || !isLocationValid) ? null : () async {
+                        final navigator = Navigator.of(context);
+                        navigator.pop(); // Pop confirmation dialog
+
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.indigo)),
+                        );
+
+                        final success = await controller.checkOut(
+                          employeeCode: user!.employeeCode,
+                        );
+
+                        navigator.pop(); // Pop loading dialog
+
+                        if (success && context.mounted) {
+                          _showSuccessDialog(context, 'Checked out of client site successfully');
+                        } else if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(controller.errorMessage)),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade700,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey[300],
+                        disabledForegroundColor: Colors.grey[500],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                      child: const Text('Checkout'),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        );
+      },
+    );
+  }
 }
+
 
 class _AttendancePieChart extends StatefulWidget {
   final List<Attendance> attendanceHistory;
@@ -2612,5 +3194,75 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
           throw Error();
       }
     });
+  }
+}
+
+class _OngoingVisitTimer extends StatefulWidget {
+  final String checkinTime;
+  const _OngoingVisitTimer({required this.checkinTime});
+
+  @override
+  State<_OngoingVisitTimer> createState() => _OngoingVisitTimerState();
+}
+
+class _OngoingVisitTimerState extends State<_OngoingVisitTimer> {
+  async_timer.Timer? _timer;
+  String _durationStr = '0m';
+
+  @override
+  void initState() {
+    super.initState();
+    _updateDuration();
+    _timer = async_timer.Timer.periodic(const Duration(minutes: 1), (timer) {
+      _updateDuration();
+    });
+  }
+
+  void _updateDuration() {
+    try {
+      final checkin = DateTime.parse(widget.checkinTime).toLocal();
+      final diff = DateTime.now().difference(checkin);
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes % 60;
+      
+      if (hours > 0) {
+        setState(() {
+          _durationStr = '${hours}h ${minutes}m';
+        });
+      } else {
+        setState(() {
+          _durationStr = '${minutes}m';
+        });
+      }
+    } catch (_) {
+      setState(() {
+        _durationStr = '0m';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.indigo.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        _durationStr,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.indigo,
+        ),
+      ),
+    );
   }
 }

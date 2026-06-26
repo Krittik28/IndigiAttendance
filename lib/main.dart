@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:upgrader/upgrader.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:indigi_attendance/controllers/auth_controller.dart';
 import 'package:indigi_attendance/controllers/attendance_controller.dart';
 import 'package:indigi_attendance/controllers/leave_controller.dart';
+import 'package:indigi_attendance/controllers/client_visit_controller.dart';
 import 'package:indigi_attendance/views/login_screen.dart';
 import 'package:indigi_attendance/views/dashboard_screen.dart';
-import 'package:indigi_attendance/services/notification_service.dart';
 import 'package:indigi_attendance/firebase_options.dart';
 
 // @pragma('vm:entry-point')
@@ -16,7 +15,7 @@ import 'package:indigi_attendance/firebase_options.dart';
 //   await Firebase.initializeApp(
 //     options: DefaultFirebaseOptions.currentPlatform,
 //   );
-//   print("Handling a background message: ${message.messageId}");
+//   debugPrint("Handling a background message: ${message.messageId}");
 // }
 
 void main() async {
@@ -46,6 +45,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => AuthController()),
         ChangeNotifierProvider(create: (context) => AttendanceController()),
         ChangeNotifierProvider(create: (context) => LeaveController()),
+        ChangeNotifierProvider(create: (context) => ClientVisitController()),
       ],
       child: MaterialApp(
         title: 'Indigi Attendance',

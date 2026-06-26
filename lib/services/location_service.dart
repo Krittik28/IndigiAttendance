@@ -1,4 +1,6 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter/foundation.dart';
+
 import 'package:geocoding/geocoding.dart';
 
 class LocationService {
@@ -35,7 +37,7 @@ class LocationService {
           timeLimit: const Duration(seconds: 10),
         );
       } catch (e) {
-        print('Location fetch attempt $attempts failed: $e');
+        debugPrint('Location fetch attempt $attempts failed: $e');
         if (attempts >= maxAttempts) {
           throw Exception('Unable to fetch location after $maxAttempts attempts. Please check your GPS signal.');
         }
@@ -86,7 +88,7 @@ class LocationService {
         'shortLocation': shortAddress,
       };
     } catch (e) {
-      print('Address lookup error: $e');
+      debugPrint('Address lookup error: $e');
       // Fallback to coordinates
       return {
         'latitude': latitude.toStringAsFixed(6),

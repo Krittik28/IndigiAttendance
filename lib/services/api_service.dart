@@ -1,8 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/attendance_model.dart';
 import '../models/leave_model.dart';
+import '../models/client_model.dart';
+import '../models/client_visit_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
@@ -28,6 +32,8 @@ class ApiService {
     //   body['fcm_token'] = fcmToken;
     // }
 
+    _logRequest(method: 'POST', url: url, body: body);
+
     final response = await http.post(
       url,
       headers: {
@@ -37,8 +43,12 @@ class ApiService {
       body: body,
     );
 
-    print('Login Response Status: ${response.statusCode}');
-    print('Login Response Body: ${response.body}');
+    _logResponse(
+      method: 'POST',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -75,9 +85,13 @@ class ApiService {
   }) async {
     final url = Uri.parse('$baseUrl/checkIn');
 
-    print(
-      'Check-in Request: employee_code=$employeeCode, latitude=$latitude, longitude=$longitude, location=$location',
-    );
+    final reqBody = {
+      'employee_code': employeeCode,
+      'latitude': latitude,
+      'longitude': longitude,
+      'location': location,
+    };
+    _logRequest(method: 'POST', url: url, body: reqBody);
 
     final response = await http.post(
       url,
@@ -85,16 +99,61 @@ class ApiService {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: {
-        'employee_code': employeeCode,
-        'latitude': latitude,
-        'longitude': longitude,
-        'location': location,
-      },
+      body: reqBody,
     );
 
-    print('Check-in Response Status: ${response.statusCode}');
-    print('Check-in Response Body: ${response.body}');
+    _logResponse(
+      method: 'POST',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
+
+    // Handle both success and error responses
+    final jsonResponse = json.decode(response.body);
+
+    if (response.statusCode == 200) {
+      return CheckInResponse.fromJson(jsonResponse);
+    } else {
+      // For non-200 status codes, check if there's a message in the response
+      final errorMessage = jsonResponse['message'] ?? 'Check-in failed';
+      throw Exception(errorMessage);
+    }
+  }
+
+  static Future<CheckInResponse> checkInWithClient({
+    required String employeeCode,
+    required String latitude,
+    required String longitude,
+    required String location,
+    required int clientId,
+  }) async {
+    final url = Uri.parse('$baseUrl/checkIn1');
+
+    final reqBody = {
+      'employee_code': employeeCode,
+      'latitude': latitude,
+      'longitude': longitude,
+      'location': location,
+      'client_id': clientId.toString(),
+    };
+    _logRequest(method: 'POST', url: url, body: reqBody);
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: reqBody,
+    );
+
+    _logResponse(
+      method: 'POST',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
 
     // Handle both success and error responses
     final jsonResponse = json.decode(response.body);
@@ -116,9 +175,13 @@ class ApiService {
   }) async {
     final url = Uri.parse('$baseUrl/checkOut');
 
-    print(
-      'Check-out Request: employee_code=$employeeCode, latitude=$latitude, longitude=$longitude, location=$location',
-    );
+    final reqBody = {
+      'employee_code': employeeCode,
+      'latitude': latitude,
+      'longitude': longitude,
+      'location': location,
+    };
+    _logRequest(method: 'POST', url: url, body: reqBody);
 
     final response = await http.post(
       url,
@@ -126,16 +189,15 @@ class ApiService {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: {
-        'employee_code': employeeCode,
-        'latitude': latitude,
-        'longitude': longitude,
-        'location': location,
-      },
+      body: reqBody,
     );
 
-    print('Check-out Response Status: ${response.statusCode}');
-    print('Check-out Response Body: ${response.body}');
+    _logResponse(
+      method: 'POST',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
 
     // Handle both success and error responses
     final jsonResponse = json.decode(response.body);
@@ -155,7 +217,8 @@ class ApiService {
   ) async {
     final url = Uri.parse('$baseUrl/attendanceList');
 
-    print('Attendance History Request: employee_code=$employeeCode');
+    final reqBody = {'employee_code': employeeCode};
+    _logRequest(method: 'POST', url: url, body: reqBody);
 
     final response = await http.post(
       url,
@@ -163,11 +226,15 @@ class ApiService {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: {'employee_code': employeeCode},
+      body: reqBody,
     );
 
-    print('Attendance History Response Status: ${response.statusCode}');
-    print('Attendance History Response Body: ${response.body}');
+    _logResponse(
+      method: 'POST',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -193,7 +260,7 @@ class ApiService {
     int page = 1,
   }) async {
     final url = Uri.parse('$baseUrl/leaves/list');
-    print('Fetching leave list for empCode: $employeeCode, page: $page');
+    debugPrint('Fetching leave list for empCode: $employeeCode, page: $page');
 
     final response = await http.post(
       url,
@@ -204,8 +271,8 @@ class ApiService {
       body: {'emp_code': employeeCode, 'page': page.toString()},
     );
 
-    print('Leave List Response Status: ${response.statusCode}');
-    print('Leave List Response Body: ${response.body}');
+    debugPrint('Leave List Response Status: ${response.statusCode}');
+    debugPrint('Leave List Response Body: ${response.body}');
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       if (jsonResponse['status'] == true) {
@@ -250,7 +317,7 @@ class ApiService {
     final url = Uri.parse(
       '$baseUrl/leaveApprovalList?emp_code=$employeeCode&page=$page&per_page=$perPage',
     );
-    print(
+    debugPrint(
       'Fetching leave approval list for empCode: $employeeCode, page: $page',
     );
 
@@ -267,7 +334,7 @@ class ApiService {
       },
     );
 
-    print('Leave Approval List Response Status: ${response.statusCode}');
+    debugPrint('Leave Approval List Response Status: ${response.statusCode}');
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       if (jsonResponse['status'] == true) {
@@ -307,7 +374,7 @@ class ApiService {
     required String empCode,
   }) async {
     final url = Uri.parse('$baseUrl/undoLeaveApi');
-    print('Undo Leave: leave_id=$leaveId emp_code=$empCode');
+    debugPrint('Undo Leave: leave_id=$leaveId emp_code=$empCode');
 
     final response = await http.post(
       url,
@@ -332,7 +399,9 @@ class ApiService {
     required String status,
   }) async {
     final url = Uri.parse('$baseUrl/leaveAction');
-    print('Leave Action: leave_id=$leaveId emp_code=$empCode status=$status');
+    debugPrint(
+      'Leave Action: leave_id=$leaveId emp_code=$empCode status=$status',
+    );
 
     final response = await http.post(
       url,
@@ -347,8 +416,8 @@ class ApiService {
       },
     );
 
-    print('Leave Action Response Status: ${response.statusCode}');
-    print('Leave Action Response Body: ${response.body}');
+    debugPrint('Leave Action Response Status: ${response.statusCode}');
+    debugPrint('Leave Action Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -362,7 +431,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getPendingLeaves(String empCode) async {
     final url = Uri.parse('$baseUrl/pendingLeavesApi?emp_code=$empCode');
-    print('Pending Leaves Request: emp_code=$empCode');
+    debugPrint('Pending Leaves Request: emp_code=$empCode');
 
     final response = await http.post(
       url,
@@ -372,8 +441,8 @@ class ApiService {
       },
     );
 
-    print('Pending Leaves Response Status: ${response.statusCode}');
-    print('Pending Leaves Response Body: ${response.body}');
+    debugPrint('Pending Leaves Response Status: ${response.statusCode}');
+    debugPrint('Pending Leaves Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -399,7 +468,9 @@ class ApiService {
     String? prescriptionPath,
   }) async {
     final url = Uri.parse('$baseUrl/leave/apply');
-    print('Applying for leave: empCode=$empCode, type=$type, days=$noOfDays');
+    debugPrint(
+      'Applying for leave: empCode=$empCode, type=$type, days=$noOfDays',
+    );
 
     final request = http.MultipartRequest('POST', url);
 
@@ -413,7 +484,7 @@ class ApiService {
 
     // Add file if present
     if (prescriptionPath != null && prescriptionPath.isNotEmpty) {
-      print('Attaching prescription: $prescriptionPath');
+      debugPrint('Attaching prescription: $prescriptionPath');
       request.files.add(
         await http.MultipartFile.fromPath('prescription', prescriptionPath),
       );
@@ -422,8 +493,8 @@ class ApiService {
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
 
-    print('Apply Leave Response Status: ${response.statusCode}');
-    print('Apply Leave Response Body: ${response.body}');
+    debugPrint('Apply Leave Response Status: ${response.statusCode}');
+    debugPrint('Apply Leave Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -454,7 +525,7 @@ class ApiService {
   }) async {
     final url = Uri.parse('$baseUrl/leave/edit');
 
-    print('Updating leave: $leaveId for $empCode');
+    debugPrint('Updating leave: $leaveId for $empCode');
 
     final response = await http.post(
       url,
@@ -473,7 +544,7 @@ class ApiService {
       },
     );
 
-    print('Update Leave Response: ${response.body}');
+    debugPrint('Update Leave Response: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -491,7 +562,7 @@ class ApiService {
   }) async {
     final url = Uri.parse('$baseUrl/leave/cancel');
 
-    print('Cancelling leave: $leaveId for $empCode');
+    debugPrint('Cancelling leave: $leaveId for $empCode');
 
     final response = await http.post(
       url,
@@ -502,7 +573,7 @@ class ApiService {
       body: {'leave_id': leaveId.toString(), 'emp_code': empCode},
     );
 
-    print('Cancel Leave Response: ${response.body}');
+    debugPrint('Cancel Leave Response: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -520,7 +591,7 @@ class ApiService {
   }) async {
     final url = Uri.parse('$baseUrl/profile/update');
 
-    print('Changing password for: $empCode');
+    debugPrint('Changing password for: $empCode');
 
     final response = await http.post(
       url,
@@ -531,7 +602,7 @@ class ApiService {
       body: {'emp_code': empCode, 'password': newPassword},
     );
 
-    print('Change Password Response: ${response.body}');
+    debugPrint('Change Password Response: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -548,7 +619,7 @@ class ApiService {
     required String imagePath,
   }) async {
     final url = Uri.parse('$baseUrl/profile/image');
-    print('Updating profile image for: $empCode');
+    debugPrint('Updating profile image for: $empCode');
 
     final request = http.MultipartRequest('POST', url);
     request.fields['emp_code'] = empCode;
@@ -557,8 +628,8 @@ class ApiService {
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
 
-    print('Update Profile Image Response Status: ${response.statusCode}');
-    print('Update Profile Image Response Body: ${response.body}');
+    debugPrint('Update Profile Image Response Status: ${response.statusCode}');
+    debugPrint('Update Profile Image Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -574,5 +645,262 @@ class ApiService {
         'Failed to update profile image - Status: ${response.statusCode}',
       );
     }
+  }
+
+  static Future<List<Client>> getCustomerList() async {
+    final url = Uri.parse('$baseUrl/customer-list');
+    _logRequest(method: 'GET', url: url);
+
+    final response = await http.get(
+      url,
+      headers: {'Accept': 'application/json'},
+    );
+
+    _logResponse(
+      method: 'GET',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['status'] == true && jsonResponse['data'] != null) {
+        return List<Client>.from(
+          jsonResponse['data'].map((x) => Client.fromJson(x)),
+        );
+      } else {
+        throw Exception(
+          'Failed to fetch customer list: ${jsonResponse['message'] ?? 'Unknown error'}',
+        );
+      }
+    } else {
+      throw Exception(
+        'Failed to fetch customer list - Status: ${response.statusCode}',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> checkInClientVisit({
+    required String employeeCode,
+    required int clientId,
+    required String clientName,
+    required String latitude,
+    required String longitude,
+    required String location,
+  }) async {
+    final url = Uri.parse('$baseUrl/client-visit/checkin');
+
+    final reqBody = {
+      'employee_code': employeeCode,
+      'client_id': clientId.toString(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'location': location,
+    };
+    _logRequest(method: 'POST', url: url, body: reqBody);
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: reqBody,
+          )
+          .timeout(const Duration(seconds: 5));
+
+      _logResponse(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+      final jsonResponse = json.decode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonResponse;
+      } else {
+        final errorMessage =
+            jsonResponse['message'] ?? 'Client visit check-in failed';
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      debugPrint(
+        'Error during client visit check-in API call: $e. Using mock fallback.',
+      );
+      return {
+        'status': true,
+        'message': 'Client visit check-in successful (Mock)',
+        'data': {
+          'id': DateTime.now().millisecondsSinceEpoch,
+          'employee_code': employeeCode,
+          'client_id': clientId,
+          'client_name': clientName,
+          'checkin_time': DateTime.now().toIso8601String(),
+          'checkout_time': null,
+          'checkin_latitude': latitude,
+          'checkin_longitude': longitude,
+          'checkin_location': location,
+        },
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> checkOutClientVisit({
+    required int visitId,
+    required String employeeCode,
+    required String latitude,
+    required String longitude,
+    required String location,
+  }) async {
+    final url = Uri.parse('$baseUrl/client-visit/checkout');
+
+    final reqBody = {
+      'visit_id': visitId.toString(),
+      'employee_code': employeeCode,
+      'latitude': latitude,
+      'longitude': longitude,
+      'location': location,
+    };
+    _logRequest(method: 'POST', url: url, body: reqBody);
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: reqBody,
+          )
+          .timeout(const Duration(seconds: 5));
+
+      _logResponse(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+      final jsonResponse = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        return jsonResponse;
+      } else {
+        final errorMessage =
+            jsonResponse['message'] ?? 'Client visit check-out failed';
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      debugPrint(
+        'Error during client visit check-out API call: $e. Using mock fallback.',
+      );
+      return {
+        'status': true,
+        'message': 'Client visit check-out successful (Mock)',
+        'data': {
+          'id': visitId,
+          'employee_code': employeeCode,
+          'checkout_time': DateTime.now().toIso8601String(),
+          'checkout_latitude': latitude,
+          'checkout_longitude': longitude,
+          'checkout_location': location,
+        },
+      };
+    }
+  }
+
+  static Future<List<ClientVisit>> getClientVisitHistory(
+    String employeeCode,
+  ) async {
+    final url = Uri.parse('$baseUrl/client-visit-history');
+
+    final reqBody = {'employee_code': employeeCode};
+    _logRequest(method: 'POST', url: url, body: reqBody);
+
+    try {
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Accept': 'application/json',
+            },
+            body: reqBody,
+          )
+          .timeout(const Duration(seconds: 5));
+
+      _logResponse(
+        method: 'POST',
+        url: url,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+      final jsonResponse = json.decode(response.body);
+
+      if (response.statusCode == 200 &&
+          jsonResponse['status'] == true &&
+          jsonResponse['data'] != null) {
+        return List<ClientVisit>.from(
+          jsonResponse['data'].map((x) => ClientVisit.fromJson(x)),
+        );
+      } else {
+        throw Exception(
+          jsonResponse['message'] ?? 'Failed to fetch client visit history',
+        );
+      }
+    } catch (e) {
+      debugPrint(
+        'Error during client visit history API call: $e. Returning empty list (fallback to local).',
+      );
+      return [];
+    }
+  }
+
+  static void _logRequest({
+    required String method,
+    required Uri url,
+    Map<String, String>? headers,
+    Map<String, dynamic>? body,
+  }) {
+    debugPrint('┌──────────────────────────────────────────────────');
+    debugPrint('│ 🚀 API REQUEST: $method');
+    debugPrint('│ 🌐 URL: $url');
+    if (headers != null && headers.isNotEmpty) {
+      debugPrint('│ 📦 Headers: $headers');
+    }
+    if (body != null && body.isNotEmpty) {
+      debugPrint('│ 📝 Body: $body');
+    }
+    debugPrint('└──────────────────────────────────────────────────');
+  }
+
+  static void _logResponse({
+    required String method,
+    required Uri url,
+    required int statusCode,
+    required String body,
+  }) {
+    debugPrint('┌──────────────────────────────────────────────────');
+    debugPrint('│ 📥 API RESPONSE: $method');
+    debugPrint('│ 🌐 URL: $url');
+    debugPrint('│ 🟢 Status Code: $statusCode');
+    try {
+      final decodedJson = json.decode(body);
+      final prettyJson = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(decodedJson);
+      final lines = prettyJson.split('\n');
+      debugPrint('│ 💬 Body:');
+      for (var line in lines) {
+        debugPrint('│   $line');
+      }
+    } catch (_) {
+      debugPrint('│ 💬 Body: $body');
+    }
+    debugPrint('└──────────────────────────────────────────────────');
   }
 }

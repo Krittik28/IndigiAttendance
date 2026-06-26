@@ -584,7 +584,7 @@ class _LeaveDashboardScreenState extends State<LeaveDashboardScreen> {
 
                 final success = await controller.cancelLeaveRequest(request.id, empCode);
                 
-                if (context.mounted) {
+                if (mounted) {
                   Navigator.pop(context); // Close loading indicator
                   if (success) {
                     ScaffoldMessenger.of(context).showSnackBar(

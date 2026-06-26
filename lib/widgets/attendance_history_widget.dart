@@ -199,7 +199,7 @@ class AttendanceHistoryWidget extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Expanded(
@@ -224,7 +224,7 @@ class AttendanceHistoryWidget extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 2),

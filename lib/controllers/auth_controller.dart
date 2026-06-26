@@ -3,7 +3,6 @@ import 'dart:convert';
 import '../services/api_service.dart';
 import '../services/shared_prefs_service.dart';
 import '../services/device_service.dart';
-import '../services/notification_service.dart';
 import '../models/user_model.dart';
 import '../models/attendance_model.dart';
 
@@ -46,23 +45,23 @@ class AuthController with ChangeNotifier {
           // If the server explicitly rejected the login (e.g. Device ID mismatch),
           // we must NOT fall back to offline mode. We must clear the saved data.
           if (_lastLoginWasServerRejection) {
-            print('⚠️ Auto-login rejected by server (likely device mismatch). Clearing saved state.');
+            debugPrint('⚠️ Auto-login rejected by server (likely device mismatch). Clearing saved state.');
             await SharedPrefsService.clearUserData();
             _currentUser = null;
           } else {
             // Only fall back to offline mode if it was NOT a server rejection (e.g. Network Error)
-            print('ℹ️ Auto-login failed due to network/unknown error. Using offline fallback.');
+            debugPrint('ℹ️ Auto-login failed due to network/unknown error. Using offline fallback.');
             try {
               final userMap = json.decode(userData['userData']!);
               _currentUser = User.fromJson(userMap);
             } catch (e) {
-              print('Error parsing saved user data: $e');
+              debugPrint('Error parsing saved user data: $e');
             }
           }
         }
       }
     } catch (e) {
-      print('Auto-login failed: $e');
+      debugPrint('Auto-login failed: $e');
       // If auto-login fails, clear saved data
       await SharedPrefsService.clearUserData();
     } finally {
@@ -177,7 +176,7 @@ class AuthController with ChangeNotifier {
       );
       notifyListeners();
     } catch (e) {
-      print('Error fetching pending leaves: $e');
+      debugPrint('Error fetching pending leaves: $e');
     }
   }
 
@@ -194,7 +193,7 @@ class AuthController with ChangeNotifier {
       _isRefreshingHistory = false;
       notifyListeners();
     } catch (e) {
-      print('Error refreshing attendance history: $e');
+      debugPrint('Error refreshing attendance history: $e');
       _isRefreshingHistory = false;
       notifyListeners();
       // Don't show error to user for history refresh, just log it
