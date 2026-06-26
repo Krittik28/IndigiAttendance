@@ -45,23 +45,23 @@ class AuthController with ChangeNotifier {
           // If the server explicitly rejected the login (e.g. Device ID mismatch),
           // we must NOT fall back to offline mode. We must clear the saved data.
           if (_lastLoginWasServerRejection) {
-            print('⚠️ Auto-login rejected by server (likely device mismatch). Clearing saved state.');
+            debugPrint('⚠️ Auto-login rejected by server (likely device mismatch). Clearing saved state.');
             await SharedPrefsService.clearUserData();
             _currentUser = null;
           } else {
             // Only fall back to offline mode if it was NOT a server rejection (e.g. Network Error)
-            print('ℹ️ Auto-login failed due to network/unknown error. Using offline fallback.');
+            debugPrint('ℹ️ Auto-login failed due to network/unknown error. Using offline fallback.');
             try {
               final userMap = json.decode(userData['userData']!);
               _currentUser = User.fromJson(userMap);
             } catch (e) {
-              print('Error parsing saved user data: $e');
+              debugPrint('Error parsing saved user data: $e');
             }
           }
         }
       }
     } catch (e) {
-      print('Auto-login failed: $e');
+      debugPrint('Auto-login failed: $e');
       // If auto-login fails, clear saved data
       await SharedPrefsService.clearUserData();
     } finally {
@@ -95,11 +95,15 @@ class AuthController with ChangeNotifier {
       // Fetch Device ID and Model for security binding
       final deviceDetails = await DeviceService.getDeviceDetails();
       
+      // Fetch FCM Token for notifications
+      // final fcmToken = await NotificationService.getToken();
+      
       final response = await ApiService.login(
         empCode, 
         password,
         deviceId: deviceDetails['device_id'],
         deviceModel: deviceDetails['device_model'],
+        // fcmToken: fcmToken,
       );
       
       if (response.status && response.user != null) {
@@ -119,6 +123,9 @@ class AuthController with ChangeNotifier {
               'name': response.user!.name,
               'email': response.user!.email,
               'emp_attachment_url': response.user!.empAttachmentUrl,
+              'can_approve_leave': response.user!.canApproveLeave,
+              'pending_leave_count': response.user!.pendingLeaveCount,
+              'pending_leave_by_employee': response.user!.pendingLeaveByEmployee.map((e) => e.toJson()).toList(),
             }),
           );
         }
@@ -150,6 +157,29 @@ class AuthController with ChangeNotifier {
     }
   }
 
+  Future<void> fetchPendingLeaves() async {
+    if (_currentUser == null || !_currentUser!.canApproveLeave) return;
+
+    try {
+      final data = await ApiService.getPendingLeaves(_currentUser!.employeeCode);
+      
+      final newCount = data['pending_leave_count'] is int 
+          ? data['pending_leave_count'] 
+          : int.tryParse(data['pending_leave_count'].toString()) ?? 0;
+          
+      final newListData = data['pending_leave_by_employee'] as List<dynamic>? ?? [];
+      final newList = newListData.map((e) => PendingLeaveByEmployee.fromJson(e as Map<String, dynamic>)).toList();
+
+      _currentUser = _currentUser!.copyWith(
+        pendingLeaveCount: newCount,
+        pendingLeaveByEmployee: newList,
+      );
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error fetching pending leaves: $e');
+    }
+  }
+
   // Updated method to refresh attendance history with better error handling
   Future<void> refreshAttendanceHistory() async {
     if (_currentUser == null) return;
@@ -163,7 +193,7 @@ class AuthController with ChangeNotifier {
       _isRefreshingHistory = false;
       notifyListeners();
     } catch (e) {
-      print('Error refreshing attendance history: $e');
+      debugPrint('Error refreshing attendance history: $e');
       _isRefreshingHistory = false;
       notifyListeners();
       // Don't show error to user for history refresh, just log it

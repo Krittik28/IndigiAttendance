@@ -329,6 +329,14 @@ class _LeaveDashboardScreenState extends State<LeaveDashboardScreen> {
         statusColor = Colors.green;
         statusText = 'Approved';
         break;
+      case LeaveStatus.rmApproved:
+        statusColor = Colors.teal;
+        statusText = 'RM Approved';
+        break;
+      case LeaveStatus.pmApproved:
+        statusColor = Colors.green;
+        statusText = 'PM Approved';
+        break;
       case LeaveStatus.applied:
         statusColor = Colors.blue;
         statusText = 'Applied';
@@ -479,6 +487,41 @@ class _LeaveDashboardScreenState extends State<LeaveDashboardScreen> {
               ),
             ],
           ),
+          
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('RM', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    const SizedBox(height: 2),
+                    Text(
+                      request.rmName ?? 'Not Assigned',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('PM', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    const SizedBox(height: 2),
+                    Text(
+                      request.pmName ?? 'Not Assigned',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black87),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
           if (request.isEditable || request.isDeletable) ...[
             const SizedBox(height: 12),
             Row(
@@ -541,7 +584,7 @@ class _LeaveDashboardScreenState extends State<LeaveDashboardScreen> {
 
                 final success = await controller.cancelLeaveRequest(request.id, empCode);
                 
-                if (context.mounted) {
+                if (mounted) {
                   Navigator.pop(context); // Close loading indicator
                   if (success) {
                     ScaffoldMessenger.of(context).showSnackBar(

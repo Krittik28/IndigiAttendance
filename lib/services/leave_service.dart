@@ -16,7 +16,6 @@ class LeaveService {
     final startDay = DateTime(start.year, start.month, start.day);
     
     final duration = end.difference(start).inDays + 1;
-    final daysInAdvance = startDay.difference(today).inDays;
 
     if (end.isBefore(start)) {
       return "End date cannot be before start date.";
@@ -110,7 +109,6 @@ class LeaveService {
       case LeaveType.happinessLeave: return 'Happiness Leave';
       case LeaveType.carryForwardLeave: return 'Carry Forward Leave';
       case LeaveType.lwp: return 'LWP';
-      default: return 'Casual Leave';
     }
   }
 }

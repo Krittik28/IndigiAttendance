@@ -25,7 +25,7 @@ class EnhancedAttendanceHistory extends StatefulWidget {
 class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
   String _selectedFilter = 'all'; // 'today', 'week', 'month', 'custom', 'all'
   DateTimeRange? _selectedDateRange;
-  bool _showOnlyCompleted = false;
+  String _selectedStatus = 'all'; // 'all', 'completed', 'pending'
   final Map<String, bool> _expandedMonths = {};
 
   @override
@@ -182,38 +182,6 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
           // Filter Row
           _buildFilterRow(),
           
-          if (_selectedFilter == 'custom' && _selectedDateRange != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[100]!),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.date_range, size: 16, color: Colors.blue),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_formatDate(_selectedDateRange!.start)} - ${_formatDate(_selectedDateRange!.end)}',
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: _selectDateRange,
-                    child: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          
           const SizedBox(height: 16),
           
           // Attendance List
@@ -223,9 +191,6 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
 
   Widget _buildHeader() {
     return Row(
@@ -314,70 +279,142 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     );
   }
 
+  String _formatDateShort(DateTime date) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
+  void _showTimePeriodSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _BottomSheetPicker(
+        title: 'Select Time Period',
+        options: const [
+          'All Time',
+          'Today',
+          'This Week',
+          'This Month',
+          'Custom Range...',
+        ],
+        selectedIndex: _selectedFilter == 'all'
+            ? 0
+            : _selectedFilter == 'today'
+                ? 1
+                : _selectedFilter == 'week'
+                    ? 2
+                    : _selectedFilter == 'month'
+                        ? 3
+                        : 4,
+        onSelect: (index) async {
+          Navigator.pop(context);
+          if (index == 4) {
+            await _selectDateRange();
+          } else {
+            setState(() {
+              _selectedFilter = index == 0
+                  ? 'all'
+                  : index == 1
+                      ? 'today'
+                      : index == 2
+                          ? 'week'
+                          : 'month';
+              _selectedDateRange = null;
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  void _showStatusSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _BottomSheetPicker(
+        title: 'Select Status',
+        options: const [
+          'All Statuses',
+          'Completed Only',
+          'Pending Only',
+        ],
+        selectedIndex: _selectedStatus == 'all'
+            ? 0
+            : _selectedStatus == 'completed'
+                ? 1
+                : 2,
+        onSelect: (index) {
+          setState(() {
+            _selectedStatus = index == 0
+                ? 'all'
+                : index == 1
+                    ? 'completed'
+                    : 'pending';
+          });
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
   Widget _buildFilterRow() {
-    return Row(
-      children: [
-        // Time Period Filter
-        Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.circular(20),
+    final bool hasActiveFilters = _selectedFilter != 'all' || _selectedStatus != 'all';
+
+    String periodLabel = 'All Time';
+    if (_selectedFilter == 'today') periodLabel = 'Today';
+    if (_selectedFilter == 'week') periodLabel = 'This Week';
+    if (_selectedFilter == 'month') periodLabel = 'This Month';
+    if (_selectedFilter == 'custom') {
+      if (_selectedDateRange != null) {
+        periodLabel = '${_formatDateShort(_selectedDateRange!.start)} - ${_formatDateShort(_selectedDateRange!.end)}';
+      } else {
+        periodLabel = 'Custom Range';
+      }
+    }
+
+    String statusLabel = 'All Statuses';
+    if (_selectedStatus == 'completed') statusLabel = 'Completed';
+    if (_selectedStatus == 'pending') statusLabel = 'Pending';
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _FilterChipButton(
+            label: periodLabel,
+            icon: Icons.calendar_today_rounded,
+            isActive: _selectedFilter != 'all',
+            onTap: _showTimePeriodSheet,
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedFilter,
-              isDense: true,
-              icon: const Icon(Icons.arrow_drop_down, size: 20),
-              style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black87,
-                fontWeight: FontWeight.w500,
-              ),
-              items: const [
-                DropdownMenuItem(value: 'today', child: Text('Today')),
-                DropdownMenuItem(value: 'week', child: Text('This Week')),
-                DropdownMenuItem(value: 'month', child: Text('This Month')),
-                DropdownMenuItem(value: 'custom', child: Text('Custom Range')),
-                DropdownMenuItem(value: 'all', child: Text('All Time')),
-              ],
-              onChanged: (value) {
-                if (value == 'custom') {
-                  _selectDateRange();
-                } else {
-                  setState(() => _selectedFilter = value!);
-                }
+          const SizedBox(width: 8),
+          _FilterChipButton(
+            label: statusLabel,
+            icon: Icons.check_circle_outline_rounded,
+            isActive: _selectedStatus != 'all',
+            onTap: _showStatusSheet,
+          ),
+          if (hasActiveFilters) ...[
+            const SizedBox(width: 8),
+            _FilterChipButton(
+              label: 'Clear',
+              icon: Icons.filter_alt_off_rounded,
+              isActive: true,
+              hasDropdown: false,
+              onTap: () {
+                setState(() {
+                  _selectedFilter = 'all';
+                  _selectedStatus = 'all';
+                  _selectedDateRange = null;
+                });
               },
             ),
-          ),
-        ),
-        
-        const SizedBox(width: 8),
-        
-        // Completed Only Filter
-        SizedBox(
-          height: 40,
-          child: FilterChip(
-            label: const Text('Completed Only'),
-            labelStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-            selected: _showOnlyCompleted,
-            onSelected: (value) => setState(() => _showOnlyCompleted = value),
-            backgroundColor: Colors.grey[100],
-            selectedColor: Colors.blue[100],
-            checkmarkColor: Colors.blue,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(color: Colors.transparent),
-            ),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 
@@ -473,6 +510,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                     style: const TextStyle(
                       fontSize: 10,
                       color: Colors.blue,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
@@ -500,7 +538,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                       const SizedBox(width: 4),
                       Text(
                         _formatTime(attendance.checkinTime ?? ''),
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                       if (attendance.checkoutTime != null) ...[
                         const SizedBox(width: 12),
@@ -508,7 +546,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                         const SizedBox(width: 4),
                         Text(
                           _formatTime(attendance.checkoutTime!),
-                          style: const TextStyle(fontSize: 12),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ],
@@ -522,7 +560,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                         Expanded(
                           child: Text(
                             attendance.checkinLocation!,
-                            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.bold),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -579,9 +617,9 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
               'No attendance records found',
               style: TextStyle(color: Colors.grey, fontSize: 16),
             ),
-            if (_selectedFilter != 'all' || _showOnlyCompleted)
+            if (_selectedFilter != 'all' || _selectedStatus != 'all')
               const SizedBox(height: 8),
-            if (_selectedFilter != 'all' || _showOnlyCompleted)
+            if (_selectedFilter != 'all' || _selectedStatus != 'all')
               Text(
                 'Try changing your filters',
                 style: TextStyle(color: Colors.grey[400], fontSize: 12),
@@ -672,8 +710,10 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     }
     
     // Filter by completion status
-    if (_showOnlyCompleted) {
+    if (_selectedStatus == 'completed') {
       filtered = filtered.where((attendance) => attendance.checkoutTime != null).toList();
+    } else if (_selectedStatus == 'pending') {
+      filtered = filtered.where((attendance) => attendance.checkoutTime == null).toList();
     }
     
     return filtered;
@@ -786,5 +826,160 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     } catch (e) {
       return dateTime;
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reusable filter chip button
+// ---------------------------------------------------------------------------
+
+class _FilterChipButton extends StatelessWidget {
+  const _FilterChipButton({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+    this.hasDropdown = true,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+  final bool hasDropdown;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? Colors.blue[50] : Colors.grey[100],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive ? Colors.blue : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? Colors.blue : Colors.grey[600],
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isActive ? Colors.blue[800] : Colors.black87,
+              ),
+            ),
+            if (hasDropdown) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_drop_down_rounded,
+                size: 16,
+                color: isActive ? Colors.blue : Colors.grey[500],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reusable bottom sheet picker
+// ---------------------------------------------------------------------------
+
+class _BottomSheetPicker extends StatelessWidget {
+  const _BottomSheetPicker({
+    required this.title,
+    required this.options,
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final String title;
+  final List<String> options;
+  final int selectedIndex;
+  final void Function(int) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: options.length,
+              itemBuilder: (context, i) {
+                final isSelected = i == selectedIndex;
+                return ListTile(
+                  leading: Icon(
+                    isSelected
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: isSelected ? Colors.blue : Colors.grey.shade400,
+                    size: 20,
+                  ),
+                  title: Text(
+                    options[i],
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isSelected ? Colors.blue : Colors.black87,
+                    ),
+                  ),
+                  onTap: () => onSelect(i),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 }

@@ -23,9 +23,8 @@ void main() {
 
     expect(balance.sickLeave, 7.0);
     expect(balance.casualLeave, 6.0);
-    expect(balance.privilegeLeave, 0.0);
-    expect(balance.carryForwardLeave, 0.0);
     expect(balance.earnedLeave, 0.0);
+    expect(balance.carryForwardLeave, 0.0);
     expect(balance.happinessLeave, 0.0);
     expect(balance.paternityLeave, 7.0);
     expect(balance.maternityLeave, 0.0);
@@ -34,7 +33,6 @@ void main() {
     expect(balance.workFromHome, 24.0);
     expect(balance.total, 29.0);
     expect(balance.remaining, 23.0);
-    expect(balance.isProbation, false);
     
     expect(balance.wfhDisplay, "24.0");
   });

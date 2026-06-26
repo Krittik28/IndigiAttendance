@@ -19,6 +19,8 @@ enum LeaveStatus {
   rejected,
   cancelled,
   applied,
+  rmApproved,
+  pmApproved,
 }
 
 class LeaveRequest {
@@ -36,6 +38,11 @@ class LeaveRequest {
   final String? pmStatus;
   final String? rmName;
   final String? pmName;
+  // Fields for approver view
+  final String? employeeName;
+  final String? employeeCode;
+  final LeaveBalance? leaveBalance;
+  final String? approverType;
 
   LeaveRequest({
     required this.id,
@@ -52,9 +59,13 @@ class LeaveRequest {
     this.pmStatus,
     this.rmName,
     this.pmName,
+    this.employeeName,
+    this.employeeCode,
+    this.leaveBalance,
+    this.approverType,
   });
 
-  factory LeaveRequest.fromJson(Map<String, dynamic> json) {
+  factory LeaveRequest.fromJson(Map<String, dynamic> json, {String? currentApproverType}) {
     return LeaveRequest(
       id: json['id'] is int ? json['id'] : int.parse(json['id'].toString()),
       type: _parseLeaveType(json['type']),
@@ -70,6 +81,12 @@ class LeaveRequest {
       rmName: json['rm_name'],
       pmName: json['pm_name'],
       rejectionReason: json['remarks'],
+      employeeName: json['employee_name'],
+      employeeCode: json['emp_code']?.toString(),
+      leaveBalance: json['leave_balance'] != null 
+          ? LeaveBalance.fromJson(json['leave_balance']) 
+          : null,
+      approverType: currentApproverType ?? json['user_type']?.toString(),
     );
   }
 
@@ -98,6 +115,8 @@ class LeaveRequest {
       case 'approved': return LeaveStatus.approved;
       case 'rejected': return LeaveStatus.rejected;
       case 'cancelled': return LeaveStatus.cancelled;
+      case 'rm_approved': return LeaveStatus.rmApproved;
+      case 'pm_approved': return LeaveStatus.pmApproved;
       default: return LeaveStatus.pending;
     }
   }
@@ -152,14 +171,13 @@ class LeaveBalance {
     if (apiRemaining == 0) {
       double calcRemaining = (json['cl'] ?? 0).toDouble() +
           (json['sl'] ?? 0).toDouble() +
-          (json['el'] ?? 0).toDouble() +
+          (json['el'] ?? json['pl'] ?? 0).toDouble() +
           (json['hpl'] ?? 0).toDouble() +
           (json['ptl'] ?? 0).toDouble() +
           (json['mtl'] ?? 0).toDouble() +
           (json['mrl'] ?? 0).toDouble() +
           (json['brl'] ?? 0).toDouble() +
-          (json['cfl'] ?? 0).toDouble() +
-          (json['pl'] ?? 0).toDouble();
+          (json['cfl'] ?? 0).toDouble();
       
       if (calcRemaining > 0) {
         apiRemaining = calcRemaining;
@@ -169,7 +187,7 @@ class LeaveBalance {
     return LeaveBalance(
       casualLeave: (json['cl'] ?? 0).toDouble(),
       sickLeave: (json['sl'] ?? 0).toDouble(),
-      earnedLeave: (json['el'] ?? 0).toDouble(),
+      earnedLeave: (json['el'] ?? json['pl'] ?? 0).toDouble(), // Payload comes as "pl" for paid leave which is Earned Leave
       compOff: (json['co'] ?? 0).toDouble(), 
       carryForwardLeave: (json['cfl'] ?? 0).toDouble(),
       workFromHome: (json['wfh'] ?? 0).toDouble(),

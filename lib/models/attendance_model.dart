@@ -70,14 +70,16 @@ class AttendanceFilters {
 class CheckInResponse {
   final bool status;
   final String message;
+  final String? warningMessage;
   final Attendance? data;
 
-  CheckInResponse({required this.status, required this.message, this.data});
+  CheckInResponse({required this.status, required this.message, this.warningMessage, this.data});
 
   factory CheckInResponse.fromJson(Map<String, dynamic> json) {
     return CheckInResponse(
       status: json['status'],
-      message: json['message'],
+      message: json['message'] ?? '',
+      warningMessage: json['warning_message'],
       data: json['data'] != null ? Attendance.fromJson(json['data']) : null,
     );
   }
@@ -86,14 +88,16 @@ class CheckInResponse {
 class CheckOutResponse {
   final bool status;
   final String message;
+  final String? warningMessage;
   final Attendance? data;
 
-  CheckOutResponse({required this.status, required this.message, this.data});
+  CheckOutResponse({required this.status, required this.message, this.warningMessage, this.data});
 
   factory CheckOutResponse.fromJson(Map<String, dynamic> json) {
     return CheckOutResponse(
       status: json['status'],
-      message: json['message'],
+      message: json['message'] ?? '',
+      warningMessage: json['warning_message'],
       data: json['data'] != null ? Attendance.fromJson(json['data']) : null,
     );
   }
