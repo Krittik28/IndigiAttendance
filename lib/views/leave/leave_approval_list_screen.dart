@@ -101,6 +101,7 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       },
     );
 
+    bool dialogPopped = false;
     try {
       final success = await ApiService.leaveAction(
         leaveId: leaveId,
@@ -110,6 +111,7 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       
       if (!mounted) return;
       Navigator.of(context).pop(); // Close loading indicator
+      dialogPopped = true;
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -121,7 +123,9 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop(); // Close loading indicator
+      if (!dialogPopped) {
+        Navigator.of(context).pop(); // Close loading indicator
+      }
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
@@ -143,6 +147,7 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       },
     );
 
+    bool dialogPopped = false;
     try {
       final success = await ApiService.undoLeave(
         leaveId: leaveId,
@@ -151,6 +156,7 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       
       if (!mounted) return;
       Navigator.of(context).pop();
+      dialogPopped = true;
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -162,7 +168,9 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop();
+      if (!dialogPopped) {
+        Navigator.of(context).pop();
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString().replaceAll("Exception: ", "")}'), backgroundColor: Colors.red),
       );

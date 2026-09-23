@@ -30,10 +30,20 @@ class ClientVisitController with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      // Load ongoing visit
+      // Load ongoing visit — but only keep it if it started today.
+      // If the employee forgot to checkout yesterday (or earlier), we discard
+      // it so they can start a fresh visit today instead of being stuck on an
+      // old one.
       final ongoingStr = prefs.getString(_ongoingVisitKey);
       if (ongoingStr != null) {
-        _ongoingVisit = ClientVisit.fromJson(json.decode(ongoingStr));
+        final candidate = ClientVisit.fromJson(json.decode(ongoingStr));
+        if (_isToday(candidate.checkinTime)) {
+          _ongoingVisit = candidate;
+        } else {
+          // Stale visit from a previous day — clear it from storage
+          await prefs.remove(_ongoingVisitKey);
+          debugPrint('ClientVisitController: Discarded stale ongoing visit from a previous day (id=${candidate.id})');
+        }
       }
 
       // Load history
@@ -85,12 +95,44 @@ class ClientVisitController with ChangeNotifier {
       if (serverHistory.isNotEmpty) {
         _visitHistory = serverHistory;
         await _saveHistoryToPrefs();
+
+        // If we don't have a local ongoing visit for TODAY, look for one in
+        // the server data. A visit is only considered "ongoing" if:
+        //   1. It has no checkout_time (still active), AND
+        //   2. Its checkin_time is from today (not a forgotten checkout from a
+        //      previous day — those are treated as historical records only).
+        if (_ongoingVisit == null) {
+          try {
+            final activeVisit = serverHistory.firstWhere(
+              (v) => v.checkoutTime == null && _isToday(v.checkinTime),
+            );
+            _ongoingVisit = activeVisit;
+            await _saveOngoingToPrefs();
+            debugPrint('ClientVisitController: Restored today\'s active visit from server (id=${activeVisit.id})');
+          } catch (_) {
+            // No active visit for today found on server — that's fine
+          }
+        }
       }
     } catch (e) {
       debugPrint('Failed to fetch client visit history from server, keeping local: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Returns true if the given ISO-8601 datetime string represents a time that
+  /// falls on today's calendar date (in local time).
+  bool _isToday(String dateTimeStr) {
+    try {
+      final date = DateTime.parse(dateTimeStr).toLocal();
+      final now = DateTime.now();
+      return date.year == now.year &&
+             date.month == now.month &&
+             date.day == now.day;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -140,6 +182,13 @@ class ClientVisitController with ChangeNotifier {
           checkinLongitude: locationData['longitude']!,
           checkinLocation: locationData['location']!,
         );
+
+        // Immediately reflect the new active visit in the history list so the
+        // recent visits section updates without waiting for a full fetchHistory.
+        // Remove any pre-existing entry with the same id first (safety dedup).
+        _visitHistory.removeWhere((v) => v.id == _ongoingVisit!.id);
+        _visitHistory.insert(0, _ongoingVisit!);
+        await _saveHistoryToPrefs();
 
         await _saveOngoingToPrefs();
         _isLoading = false;
@@ -213,7 +262,11 @@ class ClientVisitController with ChangeNotifier {
           checkoutLocation: locationData['location']!,
         );
 
-        // Prepend to history
+        // Remove the stale entry for this visit that was previously fetched from
+        // the server (it existed as "Active" with no checkout_time). Then insert
+        // the freshly completed version at the top so the recent list updates
+        // instantly without a duplicate.
+        _visitHistory.removeWhere((v) => v.id == completedVisit.id);
         _visitHistory.insert(0, completedVisit);
         await _saveHistoryToPrefs();
 

@@ -385,9 +385,18 @@ class ApiService {
       body: {'leave_id': leaveId.toString(), 'emp_code': empCode},
     );
 
+    debugPrint('Undo Leave Response Status: ${response.statusCode}');
+    debugPrint('Undo Leave Response Body: ${response.body}');
+
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
-      return jsonResponse['status'] == true;
+      if (jsonResponse['status'] == true) {
+        return true;
+      } else {
+        throw Exception(
+          jsonResponse['message'] ?? 'Failed to undo leave',
+        );
+      }
     } else {
       throw Exception('Failed to undo leave - Status: ${response.statusCode}');
     }
@@ -421,7 +430,13 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
-      return jsonResponse['status'] == true;
+      if (jsonResponse['status'] == true) {
+        return true;
+      } else {
+        throw Exception(
+          jsonResponse['message'] ?? 'Failed to perform leave action',
+        );
+      }
     } else {
       throw Exception(
         'Failed to perform leave action - Status: ${response.statusCode}',

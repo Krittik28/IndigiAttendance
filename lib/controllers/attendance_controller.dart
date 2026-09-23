@@ -344,6 +344,12 @@ class AttendanceController with ChangeNotifier {
         'checkinCount': checkinCount,
         'checkoutCount': checkoutCount,
         'todayEntries': todayEntries,
+        'checkin': todayEntries.isNotEmpty && todayEntries.last.checkinTime != null 
+            ? todayEntries.last.checkinTime 
+            : null,
+        'checkout': todayEntries.isNotEmpty && todayEntries.last.checkoutTime != null 
+            ? todayEntries.last.checkoutTime 
+            : null,
         'lastCheckin': todayEntries.isNotEmpty && todayEntries.last.checkinTime != null 
             ? todayEntries.last.checkinTime 
             : null,
@@ -358,6 +364,8 @@ class AttendanceController with ChangeNotifier {
         'checkinCount': 0,
         'checkoutCount': 0,
         'todayEntries': [],
+        'checkin': null,
+        'checkout': null,
         'lastCheckin': null,
         'lastCheckout': null,
       };

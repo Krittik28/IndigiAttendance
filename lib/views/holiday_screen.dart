@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/holiday_model.dart';
+import '../theme/app_theme.dart';
 
 class HolidayScreen extends StatelessWidget {
   const HolidayScreen({super.key});
@@ -11,10 +12,9 @@ class HolidayScreen extends StatelessWidget {
     final sortedMonths = groupedHolidays.keys.toList()..sort();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: AppTheme.surface,
         centerTitle: false,
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,7 +38,7 @@ class HolidayScreen extends StatelessWidget {
             ),
           ],
         ),
-        iconTheme: const IconThemeData(color: Colors.black87),
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
       ),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -98,8 +98,9 @@ class _SliverMonthSection extends StatelessWidget {
                   monthName,
                   style: TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: hasToday ? Colors.indigo : Colors.black87,
+                    fontWeight: FontWeight.w700,
+                    color: hasToday ? AppTheme.accent : AppTheme.textPrimary,
+                    letterSpacing: -0.4,
                   ),
                 ),
                 if (hasToday) ...[
@@ -108,7 +109,7 @@ class _SliverMonthSection extends StatelessWidget {
                     width: 6,
                     height: 6,
                     decoration: const BoxDecoration(
-                      color: Colors.indigo,
+                      color: AppTheme.accent,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -203,18 +204,19 @@ class _ModernHolidayItemState extends State<_ModernHolidayItem>
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
                         color: isToday
-                            ? Colors.indigo
-                            : (isPast ? Colors.grey[300] : Colors.red),
+                            ? AppTheme.accent
+                            : (isPast ? AppTheme.border : AppTheme.error),
                       ),
                     ),
                     Text(
                       DateFormat('EEE').format(widget.holiday.date).toUpperCase(),
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                         color: isToday
-                            ? Colors.indigo.withValues(alpha: 0.7)
-                            : (isPast ? Colors.grey[300] : Colors.red.withValues(alpha: 0.5)),
+                            ? AppTheme.accent
+                            : (isPast ? AppTheme.border : AppTheme.error.withValues(alpha: 0.6)),
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ],
@@ -225,26 +227,18 @@ class _ModernHolidayItemState extends State<_ModernHolidayItem>
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isToday ? Colors.indigo : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    color: isToday ? AppTheme.accent : AppTheme.surface,
+                    borderRadius: AppTheme.radiusLG,
                     border: isToday 
                         ? null 
-                        : Border.all(color: Colors.grey.shade100),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isToday
-                            ? Colors.indigo.withValues(alpha: 0.3)
-                            : Colors.black.withValues(alpha: 0.02),
-                        blurRadius: isToday ? 12 : 4,
-                        offset: isToday ? const Offset(0, 6) : const Offset(0, 2),
-                      )
-                    ],
+                        : Border.all(color: AppTheme.border),
+                    boxShadow: isToday ? AppTheme.accentShadow : AppTheme.cardShadow,
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {},
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: AppTheme.radiusLG,
                       child: Padding(
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -256,26 +250,27 @@ class _ModernHolidayItemState extends State<_ModernHolidayItem>
                                   child: Text(
                                     widget.holiday.name,
                                     style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
                                       color: isToday
                                           ? Colors.white
-                                          : (isPast ? Colors.grey[400] : Colors.black87),
+                                          : (isPast ? AppTheme.textTertiary : AppTheme.textPrimary),
+                                      letterSpacing: -0.2,
                                     ),
                                   ),
                                 ),
                                 if (isToday)
-                                  const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
+                                  const Icon(Icons.celebration_rounded, color: Colors.white, size: 16),
                               ],
                             ),
                             const SizedBox(height: 4),
                             Text(
                               DateFormat('EEEE, d MMMM').format(widget.holiday.date),
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: 12,
                                 color: isToday
                                     ? Colors.white.withValues(alpha: 0.8)
-                                    : Colors.grey[500],
+                                    : (isPast ? AppTheme.textTertiary : AppTheme.textSecondary),
                               ),
                             ),
                           ],

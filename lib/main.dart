@@ -9,14 +9,7 @@ import 'package:indigi_attendance/controllers/client_visit_controller.dart';
 import 'package:indigi_attendance/views/login_screen.dart';
 import 'package:indigi_attendance/views/dashboard_screen.dart';
 import 'package:indigi_attendance/firebase_options.dart';
-
-// @pragma('vm:entry-point')
-// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-//   await Firebase.initializeApp(
-//     options: DefaultFirebaseOptions.currentPlatform,
-//   );
-//   debugPrint("Handling a background message: ${message.messageId}");
-// }
+import 'package:indigi_attendance/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,12 +18,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // Set the background messaging handler early on, as a named top-level function
-  // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Initialize Notification Service
-  // await NotificationService.initialize();
 
   runApp(const MyApp());
 }
@@ -49,11 +36,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'Indigi Attendance',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: false,
-          fontFamily: 'Roboto',
-        ),
+        theme: AppTheme.themeData,
         home: UpgradeAlert(
           upgrader: Upgrader(
             durationUntilAlertAgain: Duration.zero,
@@ -79,44 +62,59 @@ class AppLoader extends StatelessWidget {
     // Show loading screen while checking auto-login
     if (authController.isCheckingAutoLogin) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                height: 200,
-                width: 200,
-                child: Image.asset(
-                  'assets/logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.business_center_rounded,
-                      size: 60,
-                      color: Colors.blue,
-                    );
-                  },
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentLight,
+                  borderRadius: AppTheme.radiusXXL,
+                ),
+                child: SizedBox(
+                  height: 80,
+                  width: 80,
+                  child: Image.asset(
+                    'assets/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(
+                        Icons.business_center_rounded,
+                        size: 48,
+                        color: AppTheme.accent,
+                      );
+                    },
+                  ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 32),
               const Text(
-                'Indigi Attendance',
+                'Indigi',
                 style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.primary,
+                  letterSpacing: -1,
                 ),
               ),
-              const SizedBox(height: 20),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 4),
               const Text(
-                'Loading...',
+                'Attendance & HR Suite',
                 style: TextStyle(
-                  color: Colors.grey,
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 48),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accent),
                 ),
               ),
             ],

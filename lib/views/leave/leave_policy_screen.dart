@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 class LeavePolicyScreen extends StatelessWidget {
   const LeavePolicyScreen({super.key});
@@ -6,175 +7,212 @@ class LeavePolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text(
-          'Leave Policy 2026',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white,
+        title: const Text('Leave Policy 2026'),
+        backgroundColor: AppTheme.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
+        centerTitle: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             _buildSectionTitle('Leave Types for Confirmed Employees'),
-             const SizedBox(height: 16),
-             
-             _buildPolicyCard(
-               title: 'Casual Leave (CL)',
-               content: [
-                 '7 days per calendar year',
-                 'Normally, not more than 2 consecutive days',
-                 'Cannot be carried forward or encashed',
-                 'Requires Reporting Manager approval',
-               ],
-               color: Colors.blue,
-             ),
-             
-             _buildPolicyCard(
-               title: 'Sick Leave (SL)',
-               content: [
-                 '7 days per calendar year',
-                 'Applicable for illness or medical emergencies',
-                 'Medical certificate mandatory for 3 or more consecutive days',
-                 'Cannot be encashed',
-               ],
-               color: Colors.red,
-             ),
-
-             _buildPolicyCard(
-               title: 'Earned Leave (EL)',
-               content: [
-                 'Entitlement: 18 days per calendar year (accrued at 1.5 days per month)',
-                 'Intended strictly for planned or long-duration leave',
-                 'Must be applied at least 14 calendar days in advance through HRMS',
-                 'Minimum EL availed at a time: 3 consecutive days',
-                 'Requests for less than 3 days will not be permitted',
-                 'Short-duration leave will be adjusted against CL or SL',
-                 'Carry forward limited to 5 days to the next calendar year',
-                 'EL is not encashable during the year unless approved by Management',
-                 'EL cannot be merged or combined with CL or SL under any circumstances',
-                 'EL must be applied separately and independently',
-                 'Late arrival or early departure adjustment against EL is strictly prohibited',
-                 'EL cannot be used for attendance regularization',
-                 'Any attempt to merge EL with CL or SL shall be rejected or reclassified',
-               ],
-               color: Colors.green,
-             ),
-             
-             const SizedBox(height: 24),
-             _buildSectionTitle('Probation Employees'),
-             const SizedBox(height: 16),
-
-             _buildPolicyCard(
-               title: 'Probation Leave Rules',
-               content: [
-                 '1 day leave per completed month of service',
-                 'Leave can be used as Casual Leave or Sick Leave',
-                 'Earned Leave (EL) is not applicable during probation',
-                 'Leave cannot be carried forward or encashed',
-               ],
-               color: Colors.orange,
-             ),
-
-             const SizedBox(height: 24),
-             _buildSectionTitle('Other Policies'),
-             const SizedBox(height: 16),
-
-             _buildPolicyCard(
-               title: 'Compensatory Off (Comp-Off)',
-               content: [
-                 'Applicable when working on a weekly off or declared holiday due to business needs',
-                 'Requires Reporting Manager approval',
-                 'Must be availed within 30 days, failing which it will lapse',
-                 'Comp-Off is not encashable',
-               ],
-               color: Colors.purple,
-             ),
-
-             _buildPolicyCard(
-               title: 'Holidays',
-               content: [
-                 'National & Festival Holiday List will be circulated separately',
-                 'Employees must follow the holiday list applicable to their base location',
-               ],
-               color: Colors.teal,
-             ),
-             
-             const SizedBox(height: 40),
+            _buildSectionHeader('Leave Types for Confirmed Employees'),
+            const SizedBox(height: 12),
+            _buildPolicyCard(
+              title: 'Casual Leave (CL)',
+              subtitle: 'Short term planned leaves',
+              icon: Icons.event_note_rounded,
+              color: const Color(0xFF3D5AFE),
+              content: [
+                '7 days per calendar year.',
+                'Normally, not more than 2 consecutive days.',
+                'Cannot be carried forward or encashed.',
+                'Requires Reporting Manager approval.',
+              ],
+            ),
+            _buildPolicyCard(
+              title: 'Sick Leave (SL)',
+              subtitle: 'Medical emergencies & illness',
+              icon: Icons.local_hospital_rounded,
+              color: const Color(0xFFE53935),
+              content: [
+                '7 days per calendar year.',
+                'Applicable for illness or medical emergencies.',
+                'Medical certificate mandatory for 3 or more consecutive days.',
+                'Cannot be encashed.',
+              ],
+            ),
+            _buildPolicyCard(
+              title: 'Earned Leave (EL)',
+              subtitle: 'Planned vacations & long-term leaves',
+              icon: Icons.verified_user_rounded,
+              color: const Color(0xFF2E7D32),
+              content: [
+                'Entitlement: 18 days per calendar year (accrued at 1.5 days per month).',
+                'Intended strictly for planned or long-duration leave.',
+                'Must be applied at least 14 calendar days in advance through HRMS.',
+                'Minimum EL availed at a time: 3 consecutive days.',
+                'Requests for less than 3 days will not be permitted.',
+                'Short-duration leave will be adjusted against CL or SL.',
+                'Carry forward limited to 5 days to the next calendar year.',
+                'EL is not encashable during the year unless approved by Management.',
+                'EL cannot be merged or combined with CL or SL under any circumstances.',
+                'EL must be applied separately and independently.',
+                'Late arrival or early departure adjustment against EL is strictly prohibited.',
+                'EL cannot be used for attendance regularization.',
+                'Any attempt to merge EL with CL or SL shall be rejected or reclassified.',
+              ],
+            ),
+            const SizedBox(height: 28),
+            _buildSectionHeader('Probation Employees'),
+            const SizedBox(height: 12),
+            _buildPolicyCard(
+              title: 'Probation Leave Rules',
+              subtitle: 'Leaves during probation period',
+              icon: Icons.timer_rounded,
+              color: const Color(0xFFF57C00),
+              content: [
+                '1 day leave per completed month of service.',
+                'Leave can be used as Casual Leave or Sick Leave.',
+                'Earned Leave (EL) is not applicable during probation.',
+                'Leave cannot be carried forward or encashed.',
+              ],
+            ),
+            const SizedBox(height: 28),
+            _buildSectionHeader('Other Policies'),
+            const SizedBox(height: 12),
+            _buildPolicyCard(
+              title: 'Compensatory Off (Comp-Off)',
+              subtitle: 'For weekend & holiday duties',
+              icon: Icons.work_history_rounded,
+              color: const Color(0xFF5E35B1),
+              content: [
+                'Applicable when working on a weekly off or declared holiday due to business needs.',
+                'Requires Reporting Manager approval.',
+                'Must be availed within 30 days, failing which it will lapse.',
+                'Comp-Off is not encashable.',
+              ],
+            ),
+            _buildPolicyCard(
+              title: 'Holidays',
+              subtitle: 'Base location list & schedule',
+              icon: Icons.calendar_month_rounded,
+              color: const Color(0xFF00897B),
+              content: [
+                'National & Festival Holiday List will be circulated separately.',
+                'Employees must follow the holiday list applicable to their base location.',
+              ],
+            ),
+            const SizedBox(height: 48),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.textTertiary,
+          letterSpacing: 1.0,
+        ),
       ),
     );
   }
 
   Widget _buildPolicyCard({
     required String title,
-    required List<String> content,
+    required String subtitle,
+    required IconData icon,
     required Color color,
+    required List<String> content,
   }) {
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border(left: BorderSide(color: color, width: 4)),
+        color: AppTheme.surface,
+        borderRadius: AppTheme.radiusLG,
+        boxShadow: AppTheme.cardShadow,
+        border: Border.all(color: AppTheme.border, width: 1),
       ),
       child: Theme(
-        data: ThemeData().copyWith(dividerColor: Colors.transparent),
+        data: ThemeData(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
         child: ExpansionTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: AppTheme.radiusMD,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
           title: Text(
             title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontSize: 16,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+              fontSize: 14,
             ),
           ),
+          subtitle: Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppTheme.textTertiary,
+              fontSize: 11,
+            ),
+          ),
+          iconColor: AppTheme.textSecondary,
+          collapsedIconColor: AppTheme.textTertiary,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          children: content.map((item) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Icon(Icons.circle, size: 6, color: color.withValues(alpha: 0.6)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87),
+          expandedAlignment: Alignment.topLeft,
+          children: [
+            const Divider(color: AppTheme.border, height: 1, thickness: 1),
+            const SizedBox(height: 16),
+            ...content.map((item) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.45,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
         ),
       ),
     );
