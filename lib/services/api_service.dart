@@ -7,6 +7,7 @@ import '../models/attendance_model.dart';
 import '../models/leave_model.dart';
 import '../models/client_model.dart';
 import '../models/client_visit_model.dart';
+import '../models/holiday_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
@@ -857,6 +858,41 @@ class ApiService {
         'Error during client visit history API call: $e. Returning empty list (fallback to local).',
       );
       return [];
+    }
+  }
+
+  static Future<HolidayResponse> getHolidays({int? year}) async {
+    final query = year != null ? '?year=$year' : '';
+    final url = Uri.parse('$baseUrl/holidays$query');
+    _logRequest(method: 'GET', url: url);
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Accept': 'application/json',
+      },
+    );
+
+    _logResponse(
+      method: 'GET',
+      url: url,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      if (jsonResponse['status'] == true) {
+        return HolidayResponse.fromJson(jsonResponse);
+      } else {
+        throw Exception(
+          jsonResponse['message'] ?? 'Failed to fetch holiday list',
+        );
+      }
+    } else {
+      throw Exception(
+        'Failed to fetch holiday list - Status: ${response.statusCode}',
+      );
     }
   }
 

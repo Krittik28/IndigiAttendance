@@ -379,6 +379,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
   void _showStatusSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -399,6 +400,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
   void _showDateSheet() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -459,6 +461,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

@@ -1,14 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../controllers/holiday_controller.dart';
 import '../models/holiday_model.dart';
 
-class HolidayScreen extends StatelessWidget {
+class HolidayScreen extends StatefulWidget {
   const HolidayScreen({super.key});
 
   @override
+  State<HolidayScreen> createState() => _HolidayScreenState();
+}
+
+class _HolidayScreenState extends State<HolidayScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final holidayController = Provider.of<HolidayController>(context, listen: false);
+      if (holidayController.holidays.isEmpty) {
+        holidayController.fetchHolidays();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final groupedHolidays = _groupHolidaysByMonth(holidayList2026);
+    final holidayController = Provider.of<HolidayController>(context);
+    final groupedHolidays = holidayController.getGroupedHolidays();
     final sortedMonths = groupedHolidays.keys.toList()..sort();
+    final currentYear = holidayController.year ?? DateTime.now().year;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -16,10 +36,10 @@ class HolidayScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               'Holidays',
               style: TextStyle(
                 color: Colors.black87,
@@ -29,8 +49,8 @@ class HolidayScreen extends StatelessWidget {
               ),
             ),
             Text(
-              '2026',
-              style: TextStyle(
+              currentYear.toString(),
+              style: const TextStyle(
                 color: Colors.grey,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -39,13 +59,116 @@ class HolidayScreen extends StatelessWidget {
           ],
         ),
         iconTheme: const IconThemeData(color: Colors.black87),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh',
+            onPressed: () => holidayController.fetchHolidays(refresh: true),
+          ),
+        ],
       ),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+      body: _buildBody(holidayController, groupedHolidays, sortedMonths, currentYear),
+    );
+  }
+
+  Widget _buildBody(
+    HolidayController holidayController,
+    Map<int, List<Holiday>> groupedHolidays,
+    List<int> sortedMonths,
+    int currentYear,
+  ) {
+    if (holidayController.isLoading && holidayController.holidays.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.indigo),
+      );
+    }
+
+    if (holidayController.errorMessage != null && holidayController.holidays.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cloud_off_rounded, size: 56, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Failed to load holidays',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                holidayController.errorMessage!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => holidayController.fetchHolidays(refresh: true),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try Again'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (holidayController.holidays.isEmpty) {
+      return RefreshIndicator(
+        color: Colors.indigo,
+        onRefresh: () => holidayController.fetchHolidays(refresh: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.event_busy_rounded, size: 56, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No holidays found',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: Colors.indigo,
+      onRefresh: () => holidayController.fetchHolidays(refresh: true),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         slivers: [
           const SliverToBoxAdapter(child: SizedBox(height: 20)),
           for (var month in sortedMonths) ...[
             _SliverMonthSection(
+              year: currentYear,
               month: month,
               holidays: groupedHolidays[month]!,
             ),
@@ -55,34 +178,22 @@ class HolidayScreen extends StatelessWidget {
       ),
     );
   }
-
-  Map<int, List<Holiday>> _groupHolidaysByMonth(List<Holiday> holidays) {
-    final Map<int, List<Holiday>> grouped = {};
-    for (var holiday in holidays) {
-      if (!grouped.containsKey(holiday.date.month)) {
-        grouped[holiday.date.month] = [];
-      }
-      grouped[holiday.date.month]!.add(holiday);
-    }
-    for (var key in grouped.keys) {
-      grouped[key]!.sort((a, b) => a.date.compareTo(b.date));
-    }
-    return grouped;
-  }
 }
 
 class _SliverMonthSection extends StatelessWidget {
+  final int year;
   final int month;
   final List<Holiday> holidays;
 
   const _SliverMonthSection({
+    required this.year,
     required this.month,
     required this.holidays,
   });
 
   @override
   Widget build(BuildContext context) {
-    final monthName = DateFormat('MMMM').format(DateTime(2026, month));
+    final monthName = DateFormat('MMMM').format(DateTime(year, month));
     final hasToday = holidays.any((h) => DateUtils.isSameDay(h.date, DateTime.now()));
 
     return SliverPadding(

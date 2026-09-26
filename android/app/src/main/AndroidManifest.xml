@@ -28,7 +28,7 @@
     </queries>
 
     <application
-        android:label="Indigi Attendance"
+        android:label="Indigi HRM"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:usesCleartextTraffic="true"

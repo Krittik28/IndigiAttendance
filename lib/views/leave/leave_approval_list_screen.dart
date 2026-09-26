@@ -555,6 +555,7 @@ class _LeaveApprovalListScreenState extends State<LeaveApprovalListScreen> {
   void _showAllBalancesModal(BuildContext context, LeaveBalance balance, String employeeName) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       backgroundColor: Colors.white,
       builder: (context) {

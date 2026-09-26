@@ -1,17 +1,3 @@
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        // Update AGP to latest version compatible with SDK 36
-        classpath("com.android.tools.build:gradle:8.1.2")
-        classpath("com.google.gms:google-services:4.4.1")
-        // Remove the explicit Kotlin version - Flutter will provide its own
-    }
-}
-
 allprojects {
     repositories {
         google()

@@ -19,6 +19,7 @@ import '../views/history_screen.dart';
 import '../views/holiday_screen.dart';
 import '../views/leave/leave_dashboard_screen.dart';
 import '../views/leave/leave_approval_list_screen.dart';
+import '../controllers/holiday_controller.dart';
 import '../models/attendance_model.dart';
 import '../models/user_model.dart';
 import '../models/holiday_model.dart';
@@ -47,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final auth = Provider.of<AuthController>(context, listen: false);
       final att = Provider.of<AttendanceController>(context, listen: false);
       att.fetchInitialLocation();
+      Provider.of<HolidayController>(context, listen: false).fetchHolidays();
       if (auth.currentUser != null) {
         att.fetchTodayStatus(auth.currentUser!.employeeCode);
         auth.fetchPendingLeaves();
@@ -66,6 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     
     final ImageSource? source = await showModalBottomSheet<ImageSource>(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -582,9 +585,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final authController = Provider.of<AuthController>(context);
     final attendanceController = Provider.of<AttendanceController>(context);
     final clientVisitController = Provider.of<ClientVisitController>(context);
+    final holidayController = Provider.of<HolidayController>(context);
     final user = authController.currentUser;
-    final todayHoliday = _getTodayHoliday();
-    final upcomingHolidays = _getUpcomingHolidays();
+    final todayHoliday = holidayController.getTodayHoliday();
+    final upcomingHolidays = holidayController.getUpcomingHolidays();
 
     // Calculate opacity for the app bar profile image
     // AppBar expanded height is 170. Toolbar height is approx 56.
@@ -606,6 +610,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           await authController.refreshAttendanceHistory();
           // Also refresh location on pull-to-refresh
           await attendanceController.fetchInitialLocation();
+          await holidayController.fetchHolidays(refresh: true);
           if (user != null) {
             await attendanceController.fetchTodayStatus(user.employeeCode);
             await authController.fetchPendingLeaves();
@@ -856,17 +861,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       ),
     );
-  }
-
-  Holiday? _getTodayHoliday() {
-    final now = DateTime.now();
-    try {
-      return holidayList2026.firstWhere(
-        (h) => h.date.year == now.year && h.date.month == now.month && h.date.day == now.day,
-      );
-    } catch (e) {
-      return null;
-    }
   }
 
   Widget _buildProfileSection(User? user, AuthController authController) {
@@ -1592,17 +1586,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  List<Holiday> _getUpcomingHolidays() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final nextWeek = today.add(const Duration(days: 7));
-
-    return holidayList2026.where((h) {
-      final hDate = DateTime(h.date.year, h.date.month, h.date.day);
-      return hDate.isAfter(today) && hDate.isBefore(nextWeek.add(const Duration(days: 1)));
-    }).toList();
-  }
-
   Widget _buildUpcomingHolidaysCard(List<Holiday> holidays) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
@@ -2112,6 +2095,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -2902,7 +2886,8 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
 
   @override
   Widget build(BuildContext context) {
-    final data = _calculateChartData();
+    final holidayController = Provider.of<HolidayController>(context);
+    final data = _calculateChartData(holidayController);
     // Check if empty
     if (data['total'] == 0) {
       return Center(
@@ -3089,7 +3074,7 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
     return months[now.month - 1];
   }
 
-  Map<String, int> _calculateChartData() {
+  Map<String, int> _calculateChartData(HolidayController holidayController) {
     final now = DateTime.now();
     final currentMonth = widget.attendanceHistory.where((a) {
       try {
@@ -3140,11 +3125,7 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
       }
       
       // Check if it's a Holiday
-      bool isHoliday = holidayList2026.any((h) => 
-        h.date.year == day.year && 
-        h.date.month == day.month && 
-        h.date.day == day.day
-      );
+      bool isHoliday = holidayController.isHoliday(day);
       
       if (isHoliday) {
         continue;
