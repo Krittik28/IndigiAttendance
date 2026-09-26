@@ -380,6 +380,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -388,10 +389,11 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
         options: const ['All Status', 'Completed', 'Active'],
         selectedIndex: _filterState.status.index,
         onSelect: (i) {
+          Navigator.of(context, rootNavigator: true).pop();
+          if (!mounted) return;
           setState(() {
             _filterState.status = _StatusFilter.values[i];
           });
-          Navigator.pop(context);
         },
       ),
     );
@@ -401,6 +403,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -415,10 +418,11 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
         ],
         selectedIndex: _filterState.dateRange.index,
         onSelect: (i) async {
-          Navigator.pop(context);
+          Navigator.of(context, rootNavigator: true).pop();
           if (i == _DateFilter.custom.index) {
             await _pickCustomRange();
           } else {
+            if (!mounted) return;
             setState(() {
               _filterState.dateRange = _DateFilter.values[i];
               _filterState.customRange = null;
@@ -432,6 +436,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
   Future<void> _pickCustomRange() async {
     final picked = await showDateRangePicker(
       context: context,
+      useRootNavigator: true,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
       initialDateRange: _filterState.customRange,
@@ -445,6 +450,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
         child: child!,
       ),
     );
+    if (!mounted) return;
     if (picked != null) {
       setState(() {
         _filterState.dateRange = _DateFilter.custom;
@@ -462,6 +468,7 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -476,10 +483,11 @@ class _ClientVisitHistoryScreenState extends State<ClientVisitHistoryScreen> {
           selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
           scrollController: controller,
           onSelect: (i) {
+            Navigator.of(context, rootNavigator: true).pop();
+            if (!mounted) return;
             setState(() {
               _filterState.clientName = i == 0 ? null : options[i];
             });
-            Navigator.pop(context);
           },
         ),
       ),
@@ -1082,11 +1090,10 @@ class _BottomSheetPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

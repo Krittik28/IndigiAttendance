@@ -106,16 +106,26 @@ class CheckOutResponse {
 // New model for attendance history response
 class AttendanceHistoryResponse {
   final bool status;
+  final int lwpCounter;
   final List<Attendance> data;
 
-  AttendanceHistoryResponse({required this.status, required this.data});
+  AttendanceHistoryResponse({
+    required this.status,
+    this.lwpCounter = 0,
+    required this.data,
+  });
 
   factory AttendanceHistoryResponse.fromJson(Map<String, dynamic> json) {
     return AttendanceHistoryResponse(
-      status: json['status'],
-      data: List<Attendance>.from(
-        json['data'].map((x) => Attendance.fromJson(x)),
-      ),
+      status: json['status'] == true,
+      lwpCounter: json['lwp_counter'] != null
+          ? (int.tryParse(json['lwp_counter'].toString()) ?? 0)
+          : 0,
+      data: json['data'] != null && json['data'] is List
+          ? List<Attendance>.from(
+              (json['data'] as List).map((x) => Attendance.fromJson(x)),
+            )
+          : [],
     );
   }
 }

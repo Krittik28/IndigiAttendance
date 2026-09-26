@@ -24,25 +24,32 @@ class LocationService {
       throw Exception('Location permissions are permanently denied. Please enable them in settings.');
     }
 
-    // Get current position with retry mechanism
+    // Get current position with quick retry mechanism and fused fallback
     Position? position;
     int attempts = 0;
-    const int maxAttempts = 3;
+    const int maxAttempts = 2;
     
     while (position == null && attempts < maxAttempts) {
       try {
         attempts++;
         position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best,
-          timeLimit: const Duration(seconds: 10),
+          desiredAccuracy: attempts == 1 ? LocationAccuracy.high : LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 6),
         );
       } catch (e) {
         debugPrint('Location fetch attempt $attempts failed: $e');
         if (attempts >= maxAttempts) {
-          throw Exception('Unable to fetch location after $maxAttempts attempts. Please check your GPS signal.');
+          // Fallback to last known position before failing
+          try {
+            position = await Geolocator.getLastKnownPosition();
+          } catch (_) {}
+          if (position == null) {
+            throw Exception('Unable to fetch location. Please check your GPS signal.');
+          }
+        } else {
+          // Brief delay before retrying
+          await Future.delayed(const Duration(milliseconds: 500));
         }
-        // Small delay before retrying
-        await Future.delayed(const Duration(seconds: 2));
       }
     }
 
@@ -62,10 +69,16 @@ class LocationService {
     double longitude
   ) async {
     try {
-      // Get placemarks from coordinates
+      // Get placemarks from coordinates with 4s timeout to avoid hanging on slow network
       List<Placemark> placemarks = await placemarkFromCoordinates(
         latitude,
         longitude,
+      ).timeout(
+        const Duration(seconds: 4),
+        onTimeout: () {
+          debugPrint('Geocoding timed out, falling back to coordinates');
+          return [];
+        },
       );
 
       String address = 'Unknown Location';

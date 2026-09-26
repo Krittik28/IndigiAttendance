@@ -11,6 +11,7 @@ import '../models/holiday_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://hrm.indigierp.com/api';
+  static const Duration requestTimeout = Duration(seconds: 12);
 
   static Future<LoginResponse> login(
     String empCode,
@@ -42,7 +43,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: body,
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'POST',
@@ -101,7 +102,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: reqBody,
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'POST',
@@ -147,7 +148,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: reqBody,
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'POST',
@@ -191,7 +192,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: reqBody,
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'POST',
@@ -212,8 +213,8 @@ class ApiService {
     }
   }
 
-  // Updated method to fetch attendance history with POST request
-  static Future<List<Attendance>> getAttendanceHistory(
+  // Updated method to fetch attendance history response with POST request
+  static Future<AttendanceHistoryResponse> getAttendanceHistoryResponse(
     String employeeCode,
   ) async {
     final url = Uri.parse('$baseUrl/attendanceList');
@@ -228,7 +229,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: reqBody,
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'POST',
@@ -240,10 +241,8 @@ class ApiService {
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
 
-      if (jsonResponse['status'] == true && jsonResponse['data'] != null) {
-        return List<Attendance>.from(
-          jsonResponse['data'].map((x) => Attendance.fromJson(x)),
-        );
+      if (jsonResponse['status'] == true) {
+        return AttendanceHistoryResponse.fromJson(jsonResponse);
       } else {
         throw Exception(
           'Failed to fetch attendance history: ${jsonResponse['message'] ?? 'Unknown error'}',
@@ -254,6 +253,14 @@ class ApiService {
         'Failed to fetch attendance history - Status: ${response.statusCode}',
       );
     }
+  }
+
+  // Updated method to fetch attendance history with POST request
+  static Future<List<Attendance>> getAttendanceHistory(
+    String employeeCode,
+  ) async {
+    final res = await getAttendanceHistoryResponse(employeeCode);
+    return res.data;
   }
 
   static Future<LeaveHistoryResponse> getLeaveList(
@@ -270,7 +277,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: {'emp_code': employeeCode, 'page': page.toString()},
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Leave List Response Status: ${response.statusCode}');
     debugPrint('Leave List Response Body: ${response.body}');
@@ -333,7 +340,7 @@ class ApiService {
         'page': page.toString(),
         'per_page': perPage.toString(),
       },
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Leave Approval List Response Status: ${response.statusCode}');
     if (response.statusCode == 200) {
@@ -384,7 +391,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: {'leave_id': leaveId.toString(), 'emp_code': empCode},
-    );
+    ).timeout(requestTimeout);
 
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
@@ -415,7 +422,7 @@ class ApiService {
         'emp_code': empCode,
         'status': status,
       },
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Leave Action Response Status: ${response.statusCode}');
     debugPrint('Leave Action Response Body: ${response.body}');
@@ -440,7 +447,7 @@ class ApiService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Pending Leaves Response Status: ${response.statusCode}');
     debugPrint('Pending Leaves Response Body: ${response.body}');
@@ -491,7 +498,7 @@ class ApiService {
       );
     }
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await request.send().timeout(requestTimeout);
     final response = await http.Response.fromStream(streamedResponse);
 
     debugPrint('Apply Leave Response Status: ${response.statusCode}');
@@ -543,7 +550,7 @@ class ApiService {
         'type': type,
         'no_of_days': noOfDays.toString(),
       },
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Update Leave Response: ${response.body}');
 
@@ -572,7 +579,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: {'leave_id': leaveId.toString(), 'emp_code': empCode},
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Cancel Leave Response: ${response.body}');
 
@@ -601,7 +608,7 @@ class ApiService {
         'Accept': 'application/json',
       },
       body: {'emp_code': empCode, 'password': newPassword},
-    );
+    ).timeout(requestTimeout);
 
     debugPrint('Change Password Response: ${response.body}');
 
@@ -626,7 +633,7 @@ class ApiService {
     request.fields['emp_code'] = empCode;
     request.files.add(await http.MultipartFile.fromPath('image', imagePath));
 
-    final streamedResponse = await request.send();
+    final streamedResponse = await request.send().timeout(requestTimeout);
     final response = await http.Response.fromStream(streamedResponse);
 
     debugPrint('Update Profile Image Response Status: ${response.statusCode}');
@@ -655,7 +662,7 @@ class ApiService {
     final response = await http.get(
       url,
       headers: {'Accept': 'application/json'},
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'GET',
@@ -871,7 +878,7 @@ class ApiService {
       headers: {
         'Accept': 'application/json',
       },
-    );
+    ).timeout(requestTimeout);
 
     _logResponse(
       method: 'GET',

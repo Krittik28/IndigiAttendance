@@ -797,7 +797,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         _buildUpcomingHolidaysCard(upcomingHolidays),
                         
                                       // Monthly Summary Chart
-                                      _buildChartSection(authController.attendanceHistory),
+                                      _buildChartSection(authController.attendanceHistory, authController.lwpCount),
                     
                     if (user != null && user.canApproveLeave)
                       _buildPendingApprovalsCard(user),
@@ -975,7 +975,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildChartSection(List<Attendance> history) {
+  Widget _buildChartSection(List<Attendance> history, int lwpCount) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1002,8 +1002,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 20),
           SizedBox(
-            height: 180,
-            child: _AttendancePieChart(attendanceHistory: history),
+            height: 190,
+            child: _AttendancePieChart(
+              attendanceHistory: history,
+              lwpCount: lwpCount,
+            ),
           ),
         ],
       ),
@@ -2874,8 +2877,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _AttendancePieChart extends StatefulWidget {
   final List<Attendance> attendanceHistory;
+  final int lwpCount;
 
-  const _AttendancePieChart({required this.attendanceHistory});
+  const _AttendancePieChart({
+    required this.attendanceHistory,
+    this.lwpCount = 0,
+  });
 
   @override
   State<_AttendancePieChart> createState() => _AttendancePieChartState();
@@ -2933,6 +2940,11 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
           color = const Color(0xFFFF9800);
           break;
         case 2:
+          value = (data['lwp'] ?? 0).toDouble();
+          label = 'LWP';
+          color = const Color(0xFFE53935);
+          break;
+        case 3:
           value = data['remaining']!.toDouble();
           label = 'Remaining';
           color = Colors.grey;
@@ -3014,13 +3026,19 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
               text: 'Completed',
               value: '${data['completed']}',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildIndicator(
               color: const Color(0xFFFF9800),
               text: 'Pending',
               value: '${data['pending']}',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            _buildIndicator(
+              color: const Color(0xFFE53935),
+              text: 'LWP',
+              value: '${data['lwp'] ?? 0}',
+            ),
+            const SizedBox(height: 8),
             _buildIndicator(
               color: Colors.grey[300]!,
               text: 'Remaining',
@@ -3111,6 +3129,7 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
     });
 
     int attendedCount = completed + pending;
+    int lwp = widget.lwpCount;
     
     // Calculate total working days in month (excluding Sundays and Holidays)
     int daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
@@ -3134,18 +3153,19 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
       totalWorkingDays++;
     }
 
-    int remaining = (totalWorkingDays - attendedCount).clamp(0, 31);
+    int remaining = (totalWorkingDays - attendedCount - lwp).clamp(0, 31);
 
     return {
       'completed': completed,
       'pending': pending,
+      'lwp': lwp,
       'remaining': remaining,
       'total': totalWorkingDays,
     };
   }
 
   List<PieChartSectionData> showingSections(Map<String, int> data) {
-    return List.generate(3, (i) {
+    return List.generate(4, (i) {
       final isTouched = i == touchedIndex;
       final radius = isTouched ? 55.0 : 45.0;
 
@@ -3165,6 +3185,13 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
             radius: radius,
           );
         case 2:
+          return PieChartSectionData(
+            color: const Color(0xFFE53935),
+            value: (data['lwp'] ?? 0).toDouble(),
+            title: '',
+            radius: radius,
+          );
+        case 3:
           return PieChartSectionData(
             color: Colors.grey[200],
             value: data['remaining']!.toDouble(),

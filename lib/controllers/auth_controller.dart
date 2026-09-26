@@ -12,6 +12,7 @@ class AuthController with ChangeNotifier {
   String _errorMessage = '';
   User? _currentUser;
   List<Attendance> _attendanceHistory = [];
+  int _lwpCount = 0;
   bool _isRefreshingHistory = false;
   // Flag to distinguish between network errors (offline) and server rejections (invalid device/creds)
   bool _lastLoginWasServerRejection = false;
@@ -21,6 +22,7 @@ class AuthController with ChangeNotifier {
   String get errorMessage => _errorMessage;
   User? get currentUser => _currentUser;
   List<Attendance> get attendanceHistory => _attendanceHistory;
+  int get lwpCount => _lwpCount;
   bool get isRefreshingHistory => _isRefreshingHistory;
 
   AuthController() {
@@ -109,6 +111,7 @@ class AuthController with ChangeNotifier {
       if (response.status && response.user != null) {
         _currentUser = response.user;
         _attendanceHistory = response.attendance;
+        _lwpCount = response.lwpCounter;
         _isLoading = false;
         _errorMessage = '';
 
@@ -188,8 +191,9 @@ class AuthController with ChangeNotifier {
     notifyListeners();
 
     try {
-      final history = await ApiService.getAttendanceHistory(_currentUser!.employeeCode);
-      _attendanceHistory = history;
+      final res = await ApiService.getAttendanceHistoryResponse(_currentUser!.employeeCode);
+      _attendanceHistory = res.data;
+      _lwpCount = res.lwpCounter;
       _isRefreshingHistory = false;
       notifyListeners();
     } catch (e) {
@@ -289,6 +293,7 @@ class AuthController with ChangeNotifier {
     _currentUser = null;
     _errorMessage = '';
     _attendanceHistory = [];
+    _lwpCount = 0;
     _isRefreshingHistory = false;
     _isLoading = false;
     

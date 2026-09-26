@@ -99,7 +99,7 @@ class _CheckInMapDialogState extends State<CheckInMapDialog> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
                 ),
               ],
             ),
@@ -119,9 +119,13 @@ class _CheckInMapDialogState extends State<CheckInMapDialog> {
                 // Fit bounds with more padding (100) to zoom out
                 Future.delayed(const Duration(milliseconds: 500), () {
                   if (mounted) {
-                    controller.animateCamera(
-                      CameraUpdate.newLatLngBounds(bounds, 100),
-                    );
+                    try {
+                      controller.animateCamera(
+                        CameraUpdate.newLatLngBounds(bounds, 100),
+                      );
+                    } catch (e) {
+                      debugPrint('Map animate camera error: $e');
+                    }
                   }
                 });
               },

@@ -1,7 +1,7 @@
 name: indigi_attendance
 description: "Indigi HRM is a mobile application for managing employee attendance and human resources."
 publish_to: 'none'
-version: 1.1.5+8
+version: 1.1.6+10
 
 environment:
   sdk: ^3.9.2

@@ -49,6 +49,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
  Future<void> _selectDateRange() async {
   final DateTimeRange? picked = await showDialog<DateTimeRange>(
     context: context,
+    useRootNavigator: true,
     barrierDismissible: true,
     barrierColor: Colors.black54,
     builder: (context) {
@@ -101,6 +102,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
   );
 
   // ✅ Handle result
+  if (!mounted) return;
   if (picked != null) {
     setState(() {
       _selectedDateRange = picked;
@@ -288,6 +290,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -310,10 +313,11 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                         ? 3
                         : 4,
         onSelect: (index) async {
-          Navigator.pop(context);
+          Navigator.of(context, rootNavigator: true).pop();
           if (index == 4) {
             await _selectDateRange();
           } else {
+            if (!mounted) return;
             setState(() {
               _selectedFilter = index == 0
                   ? 'all'
@@ -334,6 +338,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -350,6 +355,8 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                 ? 1
                 : 2,
         onSelect: (index) {
+          Navigator.of(context, rootNavigator: true).pop();
+          if (!mounted) return;
           setState(() {
             _selectedStatus = index == 0
                 ? 'all'
@@ -357,7 +364,6 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
                     ? 'completed'
                     : 'pending';
           });
-          Navigator.pop(context);
         },
       ),
     );
@@ -407,6 +413,7 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
               isActive: true,
               hasDropdown: false,
               onTap: () {
+                if (!mounted) return;
                 setState(() {
                   _selectedFilter = 'all';
                   _selectedStatus = 'all';
@@ -457,9 +464,12 @@ class _EnhancedAttendanceHistoryState extends State<EnhancedAttendanceHistory> {
               isExpanded ? Icons.expand_less : Icons.expand_more,
               color: Colors.grey,
             ),
-            onTap: () => setState(() {
-              _expandedMonths[monthKey] = !isExpanded;
-            }),
+            onTap: () {
+              if (!mounted) return;
+              setState(() {
+                _expandedMonths[monthKey] = !isExpanded;
+              });
+            },
           ),
           
           // Month Attendance List
@@ -916,11 +926,10 @@ class _BottomSheetPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

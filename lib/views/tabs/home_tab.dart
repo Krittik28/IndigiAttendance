@@ -173,7 +173,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
 
                     // Monthly Overview Chart
                     const SizedBox(height: 28),
-                    _buildChartCard(auth.attendanceHistory),
+                    _buildChartCard(auth.attendanceHistory, auth.lwpCount),
 
                     // Recent Activity
                     const SizedBox(height: 28),
@@ -864,7 +864,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   // ─── Chart ────────────────────────────────────────────────────────────────
-  Widget _buildChartCard(List<Attendance> history) {
+  Widget _buildChartCard(List<Attendance> history, int lwpCount) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -886,8 +886,11 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 20),
           SizedBox(
-            height: 180,
-            child: _AttendancePieChart(attendanceHistory: history),
+            height: 190,
+            child: _AttendancePieChart(
+              attendanceHistory: history,
+              lwpCount: lwpCount,
+            ),
           ),
         ],
       ),
@@ -1299,6 +1302,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   ) async {
     showDialog(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
       builder: (_) => const Center(
         child: CircularProgressIndicator(color: AppColors.coral),
@@ -1324,12 +1328,13 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       try {
         position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 10),
+          timeLimit: const Duration(seconds: 6),
         );
       } catch (_) {
-        position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 7),
+        position = await Geolocator.getLastKnownPosition();
+        position ??= await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 5),
         );
       }
 
@@ -1343,18 +1348,21 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         position.longitude,
       );
 
-      if (context.mounted) Navigator.pop(context);
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
 
       if (context.mounted) {
         showDialog(
           context: context,
+          useRootNavigator: true,
           builder: (ctx) => CheckInMapDialog(
             userLocation: LatLng(position!.latitude, position.longitude),
             officeLocation: const LatLng(officeLat, officeLong),
             distance: distance,
             isWithinRange: distance <= 20,
             onConfirm: () async {
-              Navigator.pop(ctx);
+              Navigator.of(ctx, rootNavigator: true).pop();
               if (user == null) return;
               final msg = await att.checkIn(employeeCode: user.employeeCode);
               if (msg != null && context.mounted) {
@@ -1369,7 +1377,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context);
+        Navigator.of(context, rootNavigator: true).pop();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(e.toString()),
           backgroundColor: AppColors.error,
@@ -2111,11 +2119,11 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                       onPressed: (isLoading || !isLocationValid)
                           ? null
                           : () async {
-                              final navigator = Navigator.of(context);
-                              navigator.pop(); // Pop confirmation dialog
+                              Navigator.of(context, rootNavigator: true).pop(); // Pop confirmation dialog
 
                               showDialog(
                                 context: context,
+                                useRootNavigator: true,
                                 barrierDismissible: false,
                                 builder: (_) => const Center(
                                   child: CircularProgressIndicator(
@@ -2124,24 +2132,35 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                                 ),
                               );
 
-                              final success = await controller.checkIn(
-                                employeeCode: user!.employeeCode,
-                                client: client,
-                              );
-
-                              navigator.pop(); // Pop loading dialog
-
-                              if (success && context.mounted) {
-                                _showSuccessDialog(
-                                  context,
-                                  'Checked in successfully for visit to ${client.customerName}',
+                              try {
+                                final success = await controller.checkIn(
+                                  employeeCode: user!.employeeCode,
+                                  client: client,
                                 );
-                              } else if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(controller.errorMessage),
-                                  ),
-                                );
+
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop(); // Pop loading dialog
+                                }
+
+                                if (success && context.mounted) {
+                                  _showSuccessDialog(
+                                    context,
+                                    'Checked in successfully for visit to ${client.customerName}',
+                                  );
+                                } else if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(controller.errorMessage),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -2324,11 +2343,11 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                       onPressed: (isLoading || !isLocationValid)
                           ? null
                           : () async {
-                              final navigator = Navigator.of(context);
-                              navigator.pop(); // Pop confirmation dialog
+                              Navigator.of(context, rootNavigator: true).pop(); // Pop confirmation dialog
 
                               showDialog(
                                 context: context,
+                                useRootNavigator: true,
                                 barrierDismissible: false,
                                 builder: (_) => const Center(
                                   child: CircularProgressIndicator(
@@ -2337,23 +2356,34 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                                 ),
                               );
 
-                              final success = await controller.checkOut(
-                                employeeCode: user!.employeeCode,
-                              );
-
-                              navigator.pop(); // Pop loading dialog
-
-                              if (success && context.mounted) {
-                                _showSuccessDialog(
-                                  context,
-                                  'Checked out of client site successfully',
+                              try {
+                                final success = await controller.checkOut(
+                                  employeeCode: user!.employeeCode,
                                 );
-                              } else if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(controller.errorMessage),
-                                  ),
-                                );
+
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop(); // Pop loading dialog
+                                }
+
+                                if (success && context.mounted) {
+                                  _showSuccessDialog(
+                                    context,
+                                    'Checked out of client site successfully',
+                                  );
+                                } else if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(controller.errorMessage),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
                               }
                             },
                       style: ElevatedButton.styleFrom(
@@ -2574,8 +2604,12 @@ class _TimeChip extends StatelessWidget {
 // ─── Attendance Pie Chart (carried from old dashboard) ────────────────────
 class _AttendancePieChart extends StatefulWidget {
   final List<Attendance> attendanceHistory;
+  final int lwpCount;
 
-  const _AttendancePieChart({required this.attendanceHistory});
+  const _AttendancePieChart({
+    required this.attendanceHistory,
+    this.lwpCount = 0,
+  });
 
   @override
   State<_AttendancePieChart> createState() => _AttendancePieChartState();
@@ -2636,6 +2670,11 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
           color = const Color(0xFFFF9800);
           break;
         case 2:
+          value = (data['lwp'] ?? 0).toDouble();
+          label = 'LWP';
+          color = const Color(0xFFE53935);
+          break;
+        case 3:
           value = data['remaining']!.toDouble();
           label = 'Remaining';
           color = Colors.grey;
@@ -2721,13 +2760,19 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
               text: 'Completed',
               value: '${data['completed']}',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildIndicator(
               color: const Color(0xFFFF9800),
               text: 'Pending',
               value: '${data['pending']}',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            _buildIndicator(
+              color: const Color(0xFFE53935),
+              text: 'LWP',
+              value: '${data['lwp'] ?? 0}',
+            ),
+            const SizedBox(height: 8),
             _buildIndicator(
               color: Colors.grey[300]!,
               text: 'Remaining',
@@ -2809,6 +2854,7 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
     int completed = currentMonth.where((a) => a.checkoutTime != null).length;
     int pending = currentMonth.where((a) => a.checkoutTime == null).length;
     int attendedCount = completed + pending;
+    int lwp = widget.lwpCount;
 
     // Calculate total working days in month (excluding Sundays and Holidays)
     int daysInMonth = DateUtils.getDaysInMonth(now.year, now.month);
@@ -2835,18 +2881,19 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
       totalWorkingDays++;
     }
 
-    int remaining = (totalWorkingDays - attendedCount).clamp(0, 31);
+    int remaining = (totalWorkingDays - attendedCount - lwp).clamp(0, 31);
 
     return {
       'completed': completed,
       'pending': pending,
+      'lwp': lwp,
       'remaining': remaining,
       'total': totalWorkingDays,
     };
   }
 
   List<PieChartSectionData> showingSections(Map<String, int> data) {
-    return List.generate(3, (i) {
+    return List.generate(4, (i) {
       final isTouched = i == touchedIndex;
       final radius = isTouched ? 55.0 : 45.0;
 
@@ -2866,6 +2913,13 @@ class _AttendancePieChartState extends State<_AttendancePieChart> {
             radius: radius,
           );
         case 2:
+          return PieChartSectionData(
+            color: const Color(0xFFE53935),
+            value: (data['lwp'] ?? 0).toDouble(),
+            title: '',
+            radius: radius,
+          );
+        case 3:
           return PieChartSectionData(
             color: Colors.grey[200],
             value: data['remaining']!.toDouble(),

@@ -20,51 +20,49 @@ class HistoryTab extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // ── Apple iOS Large Title Header ─────────────────────────────────
-            SliverToBoxAdapter(
-              child: Container(
-                color: AppColors.background,
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ATTENDANCE',
-                          style: AppText.sectionHeader,
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'History',
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                            letterSpacing: -0.6,
+        body: RefreshIndicator(
+          onRefresh: () async {
+            await auth.refreshAttendanceHistory();
+          },
+          color: AppColors.emerald,
+          backgroundColor: AppColors.surface,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // ── Apple iOS Large Title Header ─────────────────────────────────
+              SliverToBoxAdapter(
+                child: Container(
+                  color: AppColors.background,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ATTENDANCE',
+                            style: AppText.sectionHeader,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          const Text(
+                            'History',
+                            style: TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-          // ── Content ───────────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                await auth.refreshAttendanceHistory();
-              },
-              color: AppColors.emerald,
-              backgroundColor: AppColors.surface,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+              // ── Content ───────────────────────────────────────────────────────
+              SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 120),
                   child: EnhancedAttendanceHistory(
@@ -76,11 +74,10 @@ class HistoryTab extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

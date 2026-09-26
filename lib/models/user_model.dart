@@ -104,12 +104,14 @@ class LoginResponse {
   final String message;
   final User? user;
   final List<Attendance> attendance;
+  final int lwpCounter;
 
   LoginResponse({
     required this.status,
     required this.message,
     this.user,
     required this.attendance,
+    this.lwpCounter = 0,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
@@ -126,6 +128,9 @@ class LoginResponse {
           ? List<Attendance>.from(
               json['attendance'].map((x) => Attendance.fromJson(x)))
           : [],
+      lwpCounter: json['lwp_counter'] != null
+          ? (int.tryParse(json['lwp_counter'].toString()) ?? 0)
+          : 0,
     );
   }
 }
